@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sales Analyzer PRO - Jenta Zebua</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<style>
+body { font-family: 'Segoe UI'; background:#f1f5f9; transition: zoom 0.2s ease; }
+.excel-table { border-collapse: collapse; border:2px solid black; font-size:11px; background:white; width: 100%; }
+.excel-table th, .excel-table td { border:1px solid #444; padding:3px 6px; }
+.rank-1 { background:#00b050; }
+.rank-2 { background:#ffff00; }
+.rank-3 { background:#f8cbad; }
+.num-cell { text-align:right; font-family: monospace; }
+.text-center { text-align: center; }
+.admin-locked { display: none; }
+</style>
+</head>
+
+<body class="p-6">
+
+<div class="mb-6 border-b-2 border-gray-300 pb-2 flex justify-between items-center">
+    <div>
+        <h1 class="text-2xl font-black text-slate-800 tracking-tight">TOP SALES GENERATOR BY JENTA ZEBUA</h1>
+        <p class="text-xs text-slate-500 uppercase font-bold tracking-widest">Retail Data Analysis System</p>
+    </div>
+    <div id="adminLoginArea">
+        <input type="password" id="adminPass" placeholder="Password Admin" class="border p-1 text-sm rounded">
+        <button onclick="checkAdmin()" class="bg-slate-800 text-white px-3 py-1 rounded text-sm font-bold">Login Admin</button>
+    </div>
+    <button id="logoutBtn" onclick="logoutAdmin()" class="hidden bg-red-600 text-white px-3 py-1 rounded text-sm font-bold">Logout Admin</button>
+</div>
+
+<!-- PANEL PENGATURAN ADMIN -->
+<div id="adminPanel" class="admin-locked mb-6 bg-white p-6 rounded-lg shadow-md border-t-4 border-blue-600">
+    <h2 class="font-bold text-lg mb-4 flex items-center">⚙️ Control Panel - Management Divisi</h2>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-gray-50 p-4 rounded border">
+            <h3 class="font-bold text-sm mb-3">Tambah / Edit Divisi</h3>
+            <input type="text" id="newDivName" placeholder="Nama Divisi" class="w-full mb-2 p-2 border rounded text-sm uppercase">
+            <textarea id="newDivCodes" placeholder="Masukkan Kode Dept (pisahkan dengan koma)" class="w-full mb-2 p-2 border rounded text-sm h-20"></textarea>
+            <button onclick="addOrUpdateDivision()" class="w-full bg-blue-600 text-white py-2 rounded font-bold hover:bg-blue-700">Simpan Divisi</button>
+        </div>
+
+        <div class="bg-gray-50 p-4 rounded border">
+            <h3 class="font-bold text-sm mb-3">Daftar Divisi Saat Ini</h3>
+            <div id="divisionListDisplay" class="text-xs space-y-2 max-h-40 overflow-y-auto"></div>
+        </div>
+    </div>
+    
+    <div class="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
+        <p class="text-[10px] text-yellow-700 font-bold italic">**PETUNJUK UPDATE**: Klik tombol di bawah, buka file yang terunduh, lalu copy-paste seluruh isinya ke Google Apps Script Anda untuk menyimpan perubahan kategori secara permanen.</p>
+        <button onclick="downloadSelf()" class="mt-2 bg-green-700 text-white px-4 py-2 rounded text-xs font-bold hover:bg-green-800">
+            💾 Download File HTML untuk Update Source
+        </button>
+    </div>
+</div>
+
+<div class="flex flex-wrap gap-4 items-end mb-4">
+    <div>
+        <label class="block text-sm font-bold mb-1 text-slate-700">Pilih File CSV:</label>
+        <input type="file" onchange="handleFileUpload(event)" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+    </div>
+
+    <div>
+        <label class="block text-sm font-bold mb-1 text-slate-700">Tampilkan Rank:</label>
+        <select id="rankLimit" onchange="generate()" class="border border-gray-300 rounded px-3 py-2 text-sm">
+            <option value="10">Top 10 SKU</option>
+            <option value="15">Top 15 SKU</option>
+            <option value="20">Top 20 SKU</option>
+            <option value="50">Top 50 SKU</option>
+        </select>
+    </div>
+
+    <div class="flex gap-2">
+        <button onclick="changeZoom(0.1)" class="bg-gray-700 text-white px-3 py-2 rounded font-bold text-sm">Zoom In (+)</button>
+        <button onclick="changeZoom(-0.1)" class="bg-gray-700 text-white px-3 py-2 rounded font-bold text-sm">Zoom Out (-)</button>
+        <button onclick="resetZoom()" class="bg-gray-400 text-white px-4 py-2 rounded text-sm">Reset</button>
+        <span id="zoomLabel" class="self-center font-mono text-sm ml-2">100%</span>
+    </div>
+
+    <button onclick="exportExcel()" class="bg-green-600 text-white px-6 py-2 rounded font-bold ml-auto shadow-md hover:bg-green-700">
+        Export Excel (1 Sheet)
+    </button>
+</div>
+
+<hr class="mb-4">
+<div id="report"></div>
+
+<!-- KONFIGURASI MASTER TERBARU -->
+<script id="masterConfig" type="application/json">
+{
+    "GROCERY": ["2001", "2002", "2003", "2004", "2005", "2006", "2007", "2008", "2009", "2010", "2011", "2012", "2013", "5201", "5202", "5203", "5204", "5205"],
+    "DND": ["2025", "2026", "2027", "2028", "2029", "2030"],
+    "FISH": ["2031", "2032"],
+    "MEAT": ["2033", "2034", "2035", "2036", "5212"],
+    "PRODUCE": ["2037", "2038", "5213"],
+    "DELICA": ["2039", "2040", "5214"],
+    "BAKERY": ["2041", "2042", "5216"],
+    "HBC": ["2018", "2019", "2020", "2021", "2022", "2023", "5210", "2024", "2702", "2703", "2704", "2705", "2706", "2707", "5207", "5208", "5209", "5701", "5702", "5703", "5704", "5705"],
+    "NONFOODS": ["2014", "2015", "2016", "2017", "2701", "5206"]
+}
+</script>
+
+<script>
+let rawData=[], headers=[];
+let currentZoom = 1.0;
+let divisionMapping = JSON.parse(document.getElementById('masterConfig').textContent);
+const ADMIN_PASSWORD = "aeon123"; 
+
+function checkAdmin() {
+    const input = document.getElementById('adminPass').value;
+    if(input === ADMIN_PASSWORD) {
+        document.getElementById('adminPanel').style.display = 'block';
+        document.getElementById('adminLoginArea').classList.add('hidden');
+        document.getElementById('logoutBtn').classList.remove('hidden');
+        renderDivisionList();
+    } else { alert("Password Salah!"); }
+}
+
+function logoutAdmin() {
+    document.getElementById('adminPanel').style.display = 'none';
+    document.getElementById('adminLoginArea').classList.remove('hidden');
+    document.getElementById('logoutBtn').classList.add('hidden');
+    document.getElementById('adminPass').value = "";
+}
+
+function renderDivisionList() {
+    const list = document.getElementById('divisionListDisplay');
+    list.innerHTML = "";
+    Object.keys(divisionMapping).forEach(div => {
+        const divEl = document.createElement('div');
+        divEl.className = "flex justify-between items-center bg-white p-2 border rounded mb-1";
+        divEl.innerHTML = `<span><strong>${div}</strong> (${divisionMapping[div].length} Dept)</span><div><button onclick="editDiv('${div}')" class="text-blue-600 mr-2 text-[10px]">Edit</button><button onclick="deleteDiv('${div}')" class="text-red-600 text-[10px]">Hapus</button></div>`;
+        list.appendChild(divEl);
+    });
+}
+
+function addOrUpdateDivision() {
+    const nameInput = document.getElementById('newDivName');
+    const codesInput = document.getElementById('newDivCodes');
+    const name = nameInput.value.trim().toUpperCase();
+    const codesRaw = codesInput.value;
+    const codes = codesRaw.split(',').map(c => c.trim()).filter(c => c !== "");
+    if(!name || codes.length === 0) return alert("Isi Nama Divisi dan Kode Dept!");
+    divisionMapping[name] = codes;
+    nameInput.value = "";
+    codesInput.value = "";
+    renderDivisionList();
+    if(rawData.length > 0) generate();
+}
+
+function editDiv(name) {
+    document.getElementById('newDivName').value = name;
+    document.getElementById('newDivCodes').value = divisionMapping[name].join(', ');
+}
+
+function deleteDiv(name) {
+    if(confirm(`Hapus divisi ${name}?`)) {
+        delete divisionMapping[name];
+        renderDivisionList();
+        if(rawData.length > 0) generate();
+    }
+}
+
+function downloadSelf() {
+    const currentConfigStr = JSON.stringify(divisionMapping, null, 4);
+    let htmlContent = document.documentElement.outerHTML;
+    const regexConfig = /<script id="masterConfig" type="application\/json">[\s\S]*?<\/script>/;
+    const newConfigTag = `<script id="masterConfig" type="application/json">\n${currentConfigStr}\n<\/script>`;
+    htmlContent = htmlContent.replace(regexConfig, newConfigTag);
+    const blob = new Blob([`<!DOCTYPE html>\n${htmlContent}`], { type: 'text/html' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'Sales_Analyzer_PRO_Master.html';
+    a.click();
+}
+
+function changeZoom(amount) {
+    currentZoom += amount;
+    if (currentZoom < 0.5) currentZoom = 0.5;
+    if (currentZoom > 2.0) currentZoom = 2.0;
+    document.body.style.zoom = currentZoom;
+    document.getElementById('zoomLabel').innerText = Math.round(currentZoom * 100) + "%";
+}
+
+function resetZoom() {
+    currentZoom = 1.0;
+    document.body.style.zoom = 1.0;
+    document.getElementById('zoomLabel').innerText = "100%";
+}
+
+function letterToIdx(l){
+    let r=0;
+    for(let i=0;i<l.length;i++) r=r*26+(l.charCodeAt(i)-64);
+    return r-1;
+}
+
+function cleanNum(val){
+    if(val===null||val===undefined) return 0;
+    let str=String(val).trim();
+    if(str===''||str==='-') return 0;
+    if(/^\d{1,3}(\.\d{3})+$/.test(str)) str=str.replace(/\./g,'');
+    else if(/^\d{1,3}(\.\d{3})+,\d+$/.test(str)) str=str.replace(/\./g,'').replace(',', '.');
+    else if(/^\d{1,3}(,\d{3})+$/.test(str)) str=str.replace(/,/g,'');
+    else if(/^\d{1,3}(,\d{3})+\.\d+$/.test(str)) str=str.replace(/,/g,'');
+    let num=Number(str);
+    return isNaN(num)?0:num;
+}
+
+function handleFileUpload(e){
+    Papa.parse(e.target.files[0],{
+        skipEmptyLines:true,
+        complete:function(res){
+            headers=res.data[0];
+            rawData=res.data.slice(1);
+            generate();
+        }
+    });
+}
+
+function generate(){
+    if(!rawData.length) return;
+    const limit = parseInt(document.getElementById('rankLimit').value);
+    const amountIdx=['M','O','Q','S','U','W','Y','AA','AC','AE','AG','AI','AK'].map(letterToIdx);
+    let html="";
+    
+    Object.keys(divisionMapping).forEach(div=>{
+        let rows = rawData.filter(r=>{
+            const codes = String(r[3]||'').match(/\d+/g)||[];
+            return codes.some(c => divisionMapping[div].includes(c));
+        });
+        if(!rows.length) return;
+        
+        const map = new Map();
+        rows.forEach(r=>{
+            let rawSku=String(r[5]||'').trim();
+            if(!rawSku || rawSku.toUpperCase().includes('TOTAL')) return;
+            let sku=rawSku.replace(/^0+/,'');
+            if(!map.has(sku)){
+                let obj={sku,displaySku:rawSku,desc:r[6],totalAll:0,stores:{}};
+                amountIdx.forEach(i=>obj.stores[i]=0);
+                map.set(sku,obj);
+            }
+            let item=map.get(sku);
+            amountIdx.forEach(i=>{
+                let v=cleanNum(r[i]);
+                item.stores[i]+=v;
+                item.totalAll+=v;
+            });
+        });
+
+        let allItems = [...map.values()];
+        let topItems = [...allItems].sort((a,b)=>b.totalAll-a.totalAll).slice(0,limit);
+        
+        let storeRankings = {};
+        amountIdx.forEach(i => {
+            storeRankings[i] = new Map(
+                [...allItems]
+                .sort((a,b) => b.stores[i] - a.stores[i])
+                .map((it, idx) => [it.sku, idx + 1])
+            );
+        });
+        
+        html+=`<h2 class="font-bold text-lg text-slate-800 mt-6 mb-2 uppercase">DIVISION: ${div}</h2><table class="excel-table"><tr><th class="text-center">Rank</th><th>SKU</th><th>Item Description</th><th>Total All Store</th>`;
+        amountIdx.forEach(i=>html+=`<th>${headers[i]||i}</th>`);
+        html+="</tr>";
+        
+        topItems.forEach((it,idx)=>{
+            let rClass = idx===0?'rank-1':idx===1?'rank-2':idx===2?'rank-3':'';
+            html+=`<tr><td class="${rClass} font-bold text-center">${idx+1}</td><td>${it.displaySku}</td><td>${it.desc}</td><td class="num-cell ${rClass}">${it.totalAll.toLocaleString('id-ID')}</td>`;
+            
+            amountIdx.forEach(i=>{
+                let val=it.stores[i];
+                let rank = storeRankings[i].get(it.sku) || 999;
+                let sClass = rank===1?'rank-1':rank===2?'rank-2':rank===3?'rank-3':'';
+                html+=`<td class="num-cell ${sClass}">${val?val.toLocaleString('id-ID'):'-'}</td>`;
+            });
+            html+="</tr>";
+        });
+        html+="</table>";
+    });
+    document.getElementById('report').innerHTML=html;
+}
+
+function exportExcel(){
+    if(!rawData.length) return alert("Pilih file terlebih dahulu!");
+    const limit = parseInt(document.getElementById('rankLimit').value);
+    const amountIdx=['M','O','Q','S','U','W','Y','AA','AC','AE','AG','AI','AK'].map(letterToIdx);
+    let wb = XLSX.utils.book_new();
+    let ws_data = [];
+    Object.keys(divisionMapping).forEach(div=>{
+        let rows = rawData.filter(r=>{
+            const codes = String(r[3]||'').match(/\d+/g)||[];
+            return codes.some(c => divisionMapping[div].includes(c));
+        });
+        if(!rows.length) return;
+        ws_data.push([div]);
+        ws_data.push([]);
+        let header=["Rank","SKU","Item","Total"];
+        amountIdx.forEach(i=>header.push(headers[i]||i));
+        ws_data.push(header);
+        const map=new Map();
+        rows.forEach(r=>{
+            let rawSku=String(r[5]||'').trim();
+            if(!rawSku||rawSku.toUpperCase().includes('TOTAL')) return;
+            let sku=rawSku.replace(/^0+/,'');
+            if(!map.has(sku)){
+                let obj={sku,displaySku:rawSku,desc:r[6],total:0,stores:{}};
+                amountIdx.forEach(i=>obj.stores[i]=0);
+                map.set(sku,obj);
+            }
+            let item=map.get(sku);
+            amountIdx.forEach(i=>{
+                let v=cleanNum(r[i]);
+                item.stores[i]+=v;
+                item.total+=v;
+            });
+        });
+        let items=[...map.values()].sort((a,b)=>b.total-a.total).slice(0,limit);
+        items.forEach((it,idx)=>{
+            let row=[idx+1, "'" + it.displaySku, it.desc, it.total];
+            amountIdx.forEach(i=>row.push(it.stores[i]));
+            ws_data.push(row);
+        });
+        ws_data.push([]);
+        ws_data.push([]);
+    });
+    let ws = XLSX.utils.aoa_to_sheet(ws_data);
+    ws['!cols'] = (ws_data[2] || []).map(()=>({wch:20}));
+    XLSX.utils.book_append_sheet(wb, ws, "Top Sales");
+    XLSX.writeFile(wb, "Top_Sales_Report.xlsx");
+}
+</script>
+</body>
+</html>
