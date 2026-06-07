@@ -19,6 +19,7 @@ body { font-family: 'Segoe UI'; background:#f1f5f9; transition: zoom 0.2s ease; 
 .num-cell { text-align:right; font-family: monospace; }
 .text-center { text-align: center; }
 .admin-locked { display: none; }
+.store-tag { background:#e2e8f0; padding:2px 8px; border-radius:12px; font-size:11px; display:inline-block; margin:2px; }
 </style>
 </head>
 
@@ -38,24 +39,39 @@ body { font-family: 'Segoe UI'; background:#f1f5f9; transition: zoom 0.2s ease; 
 
 <!-- PANEL PENGATURAN ADMIN -->
 <div id="adminPanel" class="admin-locked mb-6 bg-white p-6 rounded-lg shadow-md border-t-4 border-blue-600">
-    <h2 class="font-bold text-lg mb-4 flex items-center">⚙️ Control Panel - Management Divisi</h2>
+    <h2 class="font-bold text-lg mb-4 flex items-center">⚙️ Control Panel - Management</h2>
     
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- DIVISI MANAGEMENT -->
         <div class="bg-gray-50 p-4 rounded border">
-            <h3 class="font-bold text-sm mb-3">Tambah / Edit Divisi</h3>
+            <h3 class="font-bold text-sm mb-3">📁 Manajemen Divisi</h3>
             <input type="text" id="newDivName" placeholder="Nama Divisi" class="w-full mb-2 p-2 border rounded text-sm uppercase">
             <textarea id="newDivCodes" placeholder="Masukkan Kode Dept (pisahkan dengan koma)" class="w-full mb-2 p-2 border rounded text-sm h-20"></textarea>
             <button onclick="addOrUpdateDivision()" class="w-full bg-blue-600 text-white py-2 rounded font-bold hover:bg-blue-700">Simpan Divisi</button>
+            <div id="divisionListDisplay" class="text-xs space-y-2 max-h-40 overflow-y-auto mt-3"></div>
         </div>
 
+        <!-- TOKO MANAGEMENT -->
         <div class="bg-gray-50 p-4 rounded border">
-            <h3 class="font-bold text-sm mb-3">Daftar Divisi Saat Ini</h3>
-            <div id="divisionListDisplay" class="text-xs space-y-2 max-h-40 overflow-y-auto"></div>
+            <h3 class="font-bold text-sm mb-3">🏪 Manajemen Kolom Toko</h3>
+            <div class="mb-3">
+                <label class="block text-xs font-bold mb-1">Tambah Kolom Toko Baru:</label>
+                <div class="flex gap-2">
+                    <input type="text" id="newStoreColumn" placeholder="Contoh: AM, AN, AO" class="flex-1 p-2 border rounded text-sm uppercase">
+                    <button onclick="addStoreColumn()" class="bg-green-600 text-white px-3 py-2 rounded text-sm font-bold">Tambah</button>
+                </div>
+                <p class="text-[10px] text-gray-500 mt-1">* Masukkan huruf kolom (1-2 huruf, contoh: M, AA, AM)</p>
+            </div>
+            <div>
+                <label class="block text-xs font-bold mb-1">Daftar Kolom Toko Aktif:</label>
+                <div id="storeColumnsList" class="bg-white border rounded p-2 min-h-[100px] max-h-32 overflow-y-auto"></div>
+                <button onclick="resetDefaultStores()" class="mt-2 text-xs text-red-500 underline">Reset ke Default</button>
+            </div>
         </div>
     </div>
     
     <div class="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
-        <p class="text-[10px] text-yellow-700 font-bold italic">**PETUNJUK UPDATE**: Klik tombol di bawah, buka file yang terunduh, lalu copy-paste seluruh isinya ke Google Apps Script Anda untuk menyimpan perubahan kategori secara permanen.</p>
+        <p class="text-[10px] text-yellow-700 font-bold italic">**PETUNJUK UPDATE**: Klik tombol di bawah, buka file yang terunduh, lalu copy-paste seluruh isinya ke Google Apps Script Anda untuk menyimpan perubahan secara permanen.</p>
         <button onclick="downloadSelf()" class="mt-2 bg-green-700 text-white px-4 py-2 rounded text-xs font-bold hover:bg-green-800">
             💾 Download File HTML untuk Update Source
         </button>
@@ -114,17 +130,73 @@ let currentZoom = 1.0;
 let divisionMapping = JSON.parse(document.getElementById('masterConfig').textContent);
 const ADMIN_PASSWORD = "aeon123"; 
 
-// ========== KONFIGURASI DAFTAR KOLOM TOKO ==========
-// *** CARA MENAMBAHKAN TOKO BARU ***
-// Cukup tambahkan huruf kolom baru di array di bawah ini.
-// Contoh: Jika toko baru ada di kolom "AM", tambahkan "AM" di array.
-// Sistem akan otomatis mendeteksi header dan menangani semuanya.
-// ==================================================
-let storeColumns = ["M", "O", "Q", "S", "U", "W", "Y", "AA", "AC", "AE", "AG", "AI", "AK"];
-// Jika ada toko baru di kolom "AM", ubah menjadi:
-// let storeColumns = ["M", "O", "Q", "S", "U", "W", "Y", "AA", "AC", "AE", "AG", "AI", "AK", "AM"];
+// DEFAULT STORE COLUMNS
+const DEFAULT_STORE_COLUMNS = ["M", "O", "Q", "S", "U", "W", "Y", "AA", "AC", "AE", "AG", "AI", "AK"];
+let storeColumns = [...DEFAULT_STORE_COLUMNS];
 
-// Konversi ke index (dilakukan otomatis setiap generate)
+// Load saved store columns from localStorage
+function loadStoreColumns() {
+    const saved = localStorage.getItem('storeColumns');
+    if(saved) {
+        try {
+            storeColumns = JSON.parse(saved);
+            if(!Array.isArray(storeColumns) || storeColumns.length === 0) storeColumns = [...DEFAULT_STORE_COLUMNS];
+        } catch(e) { storeColumns = [...DEFAULT_STORE_COLUMNS]; }
+    }
+    renderStoreColumnsList();
+}
+loadStoreColumns();
+
+function saveStoreColumns() {
+    localStorage.setItem('storeColumns', JSON.stringify(storeColumns));
+}
+
+function renderStoreColumnsList() {
+    const container = document.getElementById('storeColumnsList');
+    if(!container) return;
+    if(storeColumns.length === 0) {
+        container.innerHTML = '<span class="text-gray-400 text-xs">Belum ada kolom toko</span>';
+        return;
+    }
+    container.innerHTML = storeColumns.map((col, idx) => `
+        <div class="flex justify-between items-center mb-1 p-1 bg-gray-50 rounded">
+            <span class="font-mono font-bold text-sm">${col}</span>
+            <button onclick="removeStoreColumn(${idx})" class="text-red-500 text-xs px-2 py-0.5 rounded hover:bg-red-100">✖</button>
+        </div>
+    `).join('');
+}
+
+function addStoreColumn() {
+    const input = document.getElementById('newStoreColumn');
+    let newCol = input.value.trim().toUpperCase();
+    if(!newCol) return alert("Masukkan huruf kolom!");
+    // Validate column format (1-2 huruf)
+    if(!/^[A-Z]{1,2}$/.test(newCol)) return alert("Format salah! Gunakan 1-2 huruf kapital (Contoh: M, AA, AM)");
+    if(storeColumns.includes(newCol)) return alert("Kolom sudah ada!");
+    storeColumns.push(newCol);
+    saveStoreColumns();
+    renderStoreColumnsList();
+    input.value = "";
+    if(rawData.length > 0) generate();
+}
+
+function removeStoreColumn(index) {
+    if(storeColumns.length <= 1) return alert("Minimal harus ada 1 kolom toko!");
+    storeColumns.splice(index, 1);
+    saveStoreColumns();
+    renderStoreColumnsList();
+    if(rawData.length > 0) generate();
+}
+
+function resetDefaultStores() {
+    if(confirm("Reset ke daftar kolom toko default?")) {
+        storeColumns = [...DEFAULT_STORE_COLUMNS];
+        saveStoreColumns();
+        renderStoreColumnsList();
+        if(rawData.length > 0) generate();
+    }
+}
+
 function getStoreIndices() {
     return storeColumns.map(col => letterToIdx(col));
 }
@@ -154,6 +226,7 @@ function checkAdmin() {
         document.getElementById('adminLoginArea').classList.add('hidden');
         document.getElementById('logoutBtn').classList.remove('hidden');
         renderDivisionList();
+        renderStoreColumnsList();
     } else { alert("Password Salah!"); }
 }
 
@@ -166,6 +239,7 @@ function logoutAdmin() {
 
 function renderDivisionList() {
     const list = document.getElementById('divisionListDisplay');
+    if(!list) return;
     list.innerHTML = "";
     Object.keys(divisionMapping).forEach(div => {
         const divEl = document.createElement('div');
@@ -206,14 +280,19 @@ function downloadSelf() {
     const currentConfigStr = JSON.stringify(divisionMapping, null, 4);
     let htmlContent = document.documentElement.outerHTML;
     const regexConfig = /<script id="masterConfig" type="application\/json">[\s\S]*?<\/script>/;
-    const newConfigTag = `<script id="masterConfig" type="application/json">\n${currentConfigStr}\n<\/script>`;
+    const newConfigTag = `<script id="masterConfig" type="application\/json">\n${currentConfigStr}\n<\/script>`;
     htmlContent = htmlContent.replace(regexConfig, newConfigTag);
     
-    // Juga update storeColumns di html yang didownload
+    // Update storeColumns default value in the downloaded file
     const storeColsStr = JSON.stringify(storeColumns);
     const regexStoreCols = /let storeColumns = \[.*?\];/;
     const newStoreCols = `let storeColumns = ${storeColsStr};`;
     htmlContent = htmlContent.replace(regexStoreCols, newStoreCols);
+    
+    // Also update DEFAULT_STORE_COLUMNS
+    const regexDefaultStore = /const DEFAULT_STORE_COLUMNS = \[.*?\];/;
+    const newDefaultStore = `const DEFAULT_STORE_COLUMNS = ${storeColsStr};`;
+    htmlContent = htmlContent.replace(regexDefaultStore, newDefaultStore);
     
     const blob = new Blob([`<!DOCTYPE html>\n${htmlContent}`], { type: 'text/html' });
     const a = document.createElement('a');
@@ -250,7 +329,7 @@ function handleFileUpload(e){
 function generate(){
     if(!rawData.length) return;
     const limit = parseInt(document.getElementById('rankLimit').value);
-    const amountIdx = getStoreIndices(); // dinamis sesuai toko yg aktif
+    const amountIdx = getStoreIndices();
     
     let html="";
     
@@ -292,7 +371,7 @@ function generate(){
         });
         
         html+=`<h2 class="font-bold text-lg text-slate-800 mt-6 mb-2 uppercase">DIVISION: ${div}</h2><table class="excel-table"><thead><tr><th class="text-center">Rank</th><th>SKU</th><th>Item Description</th><th>Total All Store</th>`;
-        amountIdx.forEach(i=>html+=`<th>${headers[i]||storeColumns[amountIdx.indexOf(i)]}</th>`);
+        amountIdx.forEach((i, idx)=>html+=`<th>${headers[i] || storeColumns[idx]}</th>`);
         html+="<\/tr><\/thead><tbody>";
         
         topItems.forEach((it,idx)=>{
@@ -332,8 +411,8 @@ function exportExcel(){
         ws_data.push([]);
 
         let header = ["Rank", "SKU", "Item Description", "Total All Store"];
-        amountIdx.forEach(i=>{
-            header.push(headers[i] || storeColumns[amountIdx.indexOf(i)]);
+        storeColumns.forEach((col, idx)=>{
+            header.push(headers[amountIdx[idx]] || col);
         });
         ws_data.push(header);
 
@@ -379,9 +458,8 @@ function exportExcel(){
 
     let ws = XLSX.utils.aoa_to_sheet(ws_data);
     
-    // Dynamic column width based on number of stores
     let cols = [{wch:8},{wch:15},{wch:45},{wch:18}];
-    for(let i=0; i<amountIdx.length; i++) cols.push({wch:15});
+    for(let i=0; i<storeColumns.length; i++) cols.push({wch:15});
     ws['!cols'] = cols;
 
     const range = XLSX.utils.decode_range(ws['!ref']);
