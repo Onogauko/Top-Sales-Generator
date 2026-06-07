@@ -114,6 +114,39 @@ let currentZoom = 1.0;
 let divisionMapping = JSON.parse(document.getElementById('masterConfig').textContent);
 const ADMIN_PASSWORD = "aeon123"; 
 
+// ========== KONFIGURASI DAFTAR KOLOM TOKO ==========
+// *** CARA MENAMBAHKAN TOKO BARU ***
+// Cukup tambahkan huruf kolom baru di array di bawah ini.
+// Contoh: Jika toko baru ada di kolom "AM", tambahkan "AM" di array.
+// Sistem akan otomatis mendeteksi header dan menangani semuanya.
+// ==================================================
+let storeColumns = ["M", "O", "Q", "S", "U", "W", "Y", "AA", "AC", "AE", "AG", "AI", "AK"];
+// Jika ada toko baru di kolom "AM", ubah menjadi:
+// let storeColumns = ["M", "O", "Q", "S", "U", "W", "Y", "AA", "AC", "AE", "AG", "AI", "AK", "AM"];
+
+// Konversi ke index (dilakukan otomatis setiap generate)
+function getStoreIndices() {
+    return storeColumns.map(col => letterToIdx(col));
+}
+
+function letterToIdx(l){
+    let r=0;
+    for(let i=0;i<l.length;i++) r=r*26+(l.charCodeAt(i)-64);
+    return r-1;
+}
+
+function cleanNum(val){
+    if(val===null||val===undefined) return 0;
+    let str=String(val).trim();
+    if(str===''||str==='-') return 0;
+    if(/^\d{1,3}(\.\d{3})+$/.test(str)) str=str.replace(/\./g,'');
+    else if(/^\d{1,3}(\.\d{3})+,\d+$/.test(str)) str=str.replace(/\./g,'').replace(',', '.');
+    else if(/^\d{1,3}(,\d{3})+$/.test(str)) str=str.replace(/,/g,'');
+    else if(/^\d{1,3}(,\d{3})+\.\d+$/.test(str)) str=str.replace(/,/g,'');
+    let num=Number(str);
+    return isNaN(num)?0:num;
+}
+
 function checkAdmin() {
     const input = document.getElementById('adminPass').value;
     if(input === ADMIN_PASSWORD) {
@@ -175,6 +208,13 @@ function downloadSelf() {
     const regexConfig = /<script id="masterConfig" type="application\/json">[\s\S]*?<\/script>/;
     const newConfigTag = `<script id="masterConfig" type="application/json">\n${currentConfigStr}\n<\/script>`;
     htmlContent = htmlContent.replace(regexConfig, newConfigTag);
+    
+    // Juga update storeColumns di html yang didownload
+    const storeColsStr = JSON.stringify(storeColumns);
+    const regexStoreCols = /let storeColumns = \[.*?\];/;
+    const newStoreCols = `let storeColumns = ${storeColsStr};`;
+    htmlContent = htmlContent.replace(regexStoreCols, newStoreCols);
+    
     const blob = new Blob([`<!DOCTYPE html>\n${htmlContent}`], { type: 'text/html' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -196,24 +236,6 @@ function resetZoom() {
     document.getElementById('zoomLabel').innerText = "100%";
 }
 
-function letterToIdx(l){
-    let r=0;
-    for(let i=0;i<l.length;i++) r=r*26+(l.charCodeAt(i)-64);
-    return r-1;
-}
-
-function cleanNum(val){
-    if(val===null||val===undefined) return 0;
-    let str=String(val).trim();
-    if(str===''||str==='-') return 0;
-    if(/^\d{1,3}(\.\d{3})+$/.test(str)) str=str.replace(/\./g,'');
-    else if(/^\d{1,3}(\.\d{3})+,\d+$/.test(str)) str=str.replace(/\./g,'').replace(',', '.');
-    else if(/^\d{1,3}(,\d{3})+$/.test(str)) str=str.replace(/,/g,'');
-    else if(/^\d{1,3}(,\d{3})+\.\d+$/.test(str)) str=str.replace(/,/g,'');
-    let num=Number(str);
-    return isNaN(num)?0:num;
-}
-
 function handleFileUpload(e){
     Papa.parse(e.target.files[0],{
         skipEmptyLines:true,
@@ -228,7 +250,8 @@ function handleFileUpload(e){
 function generate(){
     if(!rawData.length) return;
     const limit = parseInt(document.getElementById('rankLimit').value);
-    const amountIdx=['M','O','Q','S','U','W','Y','AA','AC','AE','AG','AI','AK'].map(letterToIdx);
+    const amountIdx = getStoreIndices(); // dinamis sesuai toko yg aktif
+    
     let html="";
     
     Object.keys(divisionMapping).forEach(div=>{
@@ -268,188 +291,105 @@ function generate(){
             );
         });
         
-        html+=`<h2 class="font-bold text-lg text-slate-800 mt-6 mb-2 uppercase">DIVISION: ${div}</h2><table class="excel-table"><tr><th class="text-center">Rank</th><th>SKU</th><th>Item Description</th><th>Total All Store</th>`;
-        amountIdx.forEach(i=>html+=`<th>${headers[i]||i}</th>`);
-        html+="</tr>";
+        html+=`<h2 class="font-bold text-lg text-slate-800 mt-6 mb-2 uppercase">DIVISION: ${div}</h2><table class="excel-table"><thead><tr><th class="text-center">Rank</th><th>SKU</th><th>Item Description</th><th>Total All Store</th>`;
+        amountIdx.forEach(i=>html+=`<th>${headers[i]||storeColumns[amountIdx.indexOf(i)]}</th>`);
+        html+="<\/tr><\/thead><tbody>";
         
         topItems.forEach((it,idx)=>{
             let rClass = idx===0?'rank-1':idx===1?'rank-2':idx===2?'rank-3':'';
-            html+=`<tr><td class="${rClass} font-bold text-center">${idx+1}</td><td>${it.displaySku}</td><td>${it.desc}</td><td class="num-cell ${rClass}">${it.totalAll.toLocaleString('id-ID')}</td>`;
+            html+=`<tr><td class="${rClass} font-bold text-center">${idx+1}<\/td><td>${it.displaySku}<\/td><td>${it.desc}<\/td><td class="num-cell ${rClass}">${it.totalAll.toLocaleString('id-ID')}<\/td>`;
             
             amountIdx.forEach(i=>{
                 let val=it.stores[i];
                 let rank = storeRankings[i].get(it.sku) || 999;
                 let sClass = rank===1?'rank-1':rank===2?'rank-2':rank===3?'rank-3':'';
-                html+=`<td class="num-cell ${sClass}">${val?val.toLocaleString('id-ID'):'-'}</td>`;
+                html+=`<td class="num-cell ${sClass}">${val?val.toLocaleString('id-ID'):'-'}<\/td>`;
             });
-            html+="</tr>";
+            html+="<\/tr>";
         });
-        html+="</table>";
+        html+="<\/tbody><\/table>";
     });
     document.getElementById('report').innerHTML=html;
 }
 
 function exportExcel(){
-
     if(!rawData.length) return alert("Pilih file terlebih dahulu!");
 
     const limit = parseInt(document.getElementById('rankLimit').value);
-
-    const amountIdx = ['M','O','Q','S','U','W','Y','AA','AC','AE','AG','AI','AK']
-        .map(letterToIdx);
+    const amountIdx = getStoreIndices();
 
     let wb = XLSX.utils.book_new();
-
     let ws_data = [];
 
     Object.keys(divisionMapping).forEach(div=>{
-
         let rows = rawData.filter(r=>{
             const codes = String(r[3]||'').match(/\d+/g)||[];
             return codes.some(c => divisionMapping[div].includes(c));
         });
-
         if(!rows.length) return;
 
-        // TITLE
         ws_data.push([`DIVISION: ${div}`]);
-
-        // SPASI
         ws_data.push([]);
 
-        // HEADER
-        let header = [
-            "Rank",
-            "SKU",
-            "Item Description",
-            "Total All Store"
-        ];
-
+        let header = ["Rank", "SKU", "Item Description", "Total All Store"];
         amountIdx.forEach(i=>{
-            header.push(headers[i] || i);
+            header.push(headers[i] || storeColumns[amountIdx.indexOf(i)]);
         });
-
         ws_data.push(header);
 
         const map = new Map();
-
         rows.forEach(r=>{
-
             let rawSku = String(r[5]||'').trim();
-
             if(!rawSku || rawSku.toUpperCase().includes('TOTAL')) return;
-
             let sku = rawSku.replace(/^0+/,'');
-
             if(!map.has(sku)){
-
-                let obj = {
-                    sku,
-                    displaySku:rawSku,
-                    desc:r[6],
-                    totalAll:0,
-                    stores:{}
-                };
-
-                amountIdx.forEach(i=>{
-                    obj.stores[i] = 0;
-                });
-
+                let obj = {sku, displaySku:rawSku, desc:r[6], totalAll:0, stores:{}};
+                amountIdx.forEach(i=>obj.stores[i]=0);
                 map.set(sku,obj);
             }
-
             let item = map.get(sku);
-
             amountIdx.forEach(i=>{
-
                 let v = cleanNum(r[i]);
-
                 item.stores[i] += v;
-
                 item.totalAll += v;
             });
         });
 
-        let topItems = [...map.values()]
-            .sort((a,b)=>b.totalAll-a.totalAll)
-            .slice(0,limit);
+        let topItems = [...map.values()].sort((a,b)=>b.totalAll-a.totalAll).slice(0,limit);
 
-// STORE RANKING
-let storeRankings = {};
-
-amountIdx.forEach(i => {
-
-    storeRankings[i] = new Map(
-        [...map.values()]
-        .sort((a,b)=>b.stores[i]-a.stores[i])
-        .map((it, idx)=>[it.sku, idx+1])
-    );
-
-});
-
-        topItems.forEach((it,idx)=>{
-
-let row = [
-    idx+1,
-    "'" + it.displaySku,
-    it.desc,
-    it.totalAll
-];
-
-row._storeRanks = {};
-
-amountIdx.forEach(i=>{
-
-    row.push(it.stores[i]);
-
-    row._storeRanks[i] =
-        storeRankings[i].get(it.sku);
-
-});
-
-            ws_data.push(row);
+        let storeRankings = {};
+        amountIdx.forEach(i => {
+            storeRankings[i] = new Map(
+                [...map.values()].sort((a,b)=>b.stores[i]-a.stores[i]).map((it, idx)=>[it.sku, idx+1])
+            );
         });
 
+        topItems.forEach((it,idx)=>{
+            let row = [idx+1, "'" + it.displaySku, it.desc, it.totalAll];
+            row._storeRanks = {};
+            amountIdx.forEach(i=>{
+                row.push(it.stores[i]);
+                row._storeRanks[i] = storeRankings[i].get(it.sku);
+            });
+            ws_data.push(row);
+        });
         ws_data.push([]);
         ws_data.push([]);
     });
 
     let ws = XLSX.utils.aoa_to_sheet(ws_data);
-
-    // AUTO WIDTH
-    ws['!cols'] = [
-        {wch:8},
-        {wch:15},
-        {wch:45},
-        {wch:18},
-        {wch:15},
-        {wch:15},
-        {wch:15},
-        {wch:15},
-        {wch:15},
-        {wch:15},
-        {wch:15},
-        {wch:15},
-        {wch:15},
-        {wch:15},
-        {wch:15},
-        {wch:15},
-        {wch:15}
-    ];
+    
+    // Dynamic column width based on number of stores
+    let cols = [{wch:8},{wch:15},{wch:45},{wch:18}];
+    for(let i=0; i<amountIdx.length; i++) cols.push({wch:15});
+    ws['!cols'] = cols;
 
     const range = XLSX.utils.decode_range(ws['!ref']);
-
     for(let R = range.s.r; R <= range.e.r; ++R){
-
         for(let C = range.s.c; C <= range.e.c; ++C){
-
             let cellAddress = XLSX.utils.encode_cell({r:R,c:C});
-
             if(!ws[cellAddress]) continue;
-
             let cell = ws[cellAddress];
-
-            // BORDER SEMUA
             cell.s = {
                 border:{
                     top:{style:"thin", color:{rgb:"444444"}},
@@ -457,166 +397,80 @@ amountIdx.forEach(i=>{
                     left:{style:"thin", color:{rgb:"444444"}},
                     right:{style:"thin", color:{rgb:"444444"}}
                 },
-                font:{
-                    name:"Segoe UI",
-                    sz:10
-                },
-                alignment:{
-                    vertical:"center",
-                    horizontal: C >= 3 ? "right" : "left"
-                }
+                font:{ name:"Segoe UI", sz:10 },
+                alignment:{ vertical:"center", horizontal: C >= 3 ? "right" : "left" }
             };
-
-            // HEADER
+            
             if(R > 0 && ws[XLSX.utils.encode_cell({r:R,c:0})]?.v === "Rank"){
-
-                cell.s.fill = {
-                    fgColor:{rgb:"1E293B"}
-                };
-
-                cell.s.font = {
-                    bold:true,
-                    color:{rgb:"FFFFFF"}
-                };
-
-                cell.s.alignment = {
-                    horizontal:"center",
-                    vertical:"center"
-                };
+                cell.s.fill = { fgColor:{rgb:"1E293B"} };
+                cell.s.font = { bold:true, color:{rgb:"FFFFFF"} };
+                cell.s.alignment = { horizontal:"center", vertical:"center" };
             }
-
-            // TITLE DIVISION
+            
             if(C === 0 && String(cell.v).includes("DIVISION:")){
-
-                cell.s.font = {
-                    bold:true,
-                    sz:14,
-                    color:{rgb:"1E293B"}
-                };
-
+                cell.s.font = { bold:true, sz:14, color:{rgb:"1E293B"} };
                 cell.s.border = {};
             }
-
-            // RANK COLOR
+            
             if(C === 0 && typeof cell.v === "number"){
-
                 if(cell.v === 1){
-
-                    cell.s.fill = {
-                        fgColor:{rgb:"00B050"}
-                    };
-
+                    cell.s.fill = { fgColor:{rgb:"00B050"} };
                     cell.s.font.bold = true;
                 }
-
                 if(cell.v === 2){
-
-                    cell.s.fill = {
-                        fgColor:{rgb:"FFFF00"}
-                    };
-
+                    cell.s.fill = { fgColor:{rgb:"FFFF00"} };
                     cell.s.font.bold = true;
                 }
-
                 if(cell.v === 3){
-
-                    cell.s.fill = {
-                        fgColor:{rgb:"F8CBAD"}
-                    };
-
+                    cell.s.fill = { fgColor:{rgb:"F8CBAD"} };
                     cell.s.font.bold = true;
                 }
-
                 cell.s.alignment.horizontal = "center";
             }
-
-// TOTAL ALL STORE COLOR
-if(C === 3 && typeof cell.v === "number"){
-
-    let rankCell =
-        ws[XLSX.utils.encode_cell({r:R,c:0})];
-
-    let rank = rankCell?.v;
-
-    if(rank === 1){
-
-        cell.s.fill = {
-            fgColor:{rgb:"00B050"}
-        };
-
-        cell.s.font.bold = true;
-    }
-
-    if(rank === 2){
-
-        cell.s.fill = {
-            fgColor:{rgb:"FFFF00"}
-        };
-
-        cell.s.font.bold = true;
-    }
-
-    if(rank === 3){
-
-        cell.s.fill = {
-            fgColor:{rgb:"F8CBAD"}
-        };
-
-        cell.s.font.bold = true;
-    }
-}
-
-            // FORMAT ANGKA
-if(C >= 3 && typeof cell.v === "number"){
-
-    cell.z = '#,##0';
-
-    // STORE COLUMN
-    if(C >= 4){
-
-        let dataRow = ws_data[R];
-
-        if(dataRow){
-
-            let storeIdx = amountIdx[C - 4];
-
-            let rank =
-                dataRow._storeRanks?.[storeIdx];
-
-            if(rank === 1){
-
-                cell.s.fill = {
-                    fgColor:{rgb:"00B050"}
-                };
-
-                cell.s.font.bold = true;
+            
+            if(C === 3 && typeof cell.v === "number"){
+                let rankCell = ws[XLSX.utils.encode_cell({r:R,c:0})];
+                let rank = rankCell?.v;
+                if(rank === 1){
+                    cell.s.fill = { fgColor:{rgb:"00B050"} };
+                    cell.s.font.bold = true;
+                }
+                if(rank === 2){
+                    cell.s.fill = { fgColor:{rgb:"FFFF00"} };
+                    cell.s.font.bold = true;
+                }
+                if(rank === 3){
+                    cell.s.fill = { fgColor:{rgb:"F8CBAD"} };
+                    cell.s.font.bold = true;
+                }
             }
-
-            if(rank === 2){
-
-                cell.s.fill = {
-                    fgColor:{rgb:"FFFF00"}
-                };
-
-                cell.s.font.bold = true;
-            }
-
-            if(rank === 3){
-
-                cell.s.fill = {
-                    fgColor:{rgb:"F8CBAD"}
-                };
-
-                cell.s.font.bold = true;
+            
+            if(C >= 3 && typeof cell.v === "number"){
+                cell.z = '#,##0';
+                if(C >= 4){
+                    let dataRow = ws_data[R];
+                    if(dataRow){
+                        let storeIdx = amountIdx[C - 4];
+                        let rank = dataRow._storeRanks?.[storeIdx];
+                        if(rank === 1){
+                            cell.s.fill = { fgColor:{rgb:"00B050"} };
+                            cell.s.font.bold = true;
+                        }
+                        if(rank === 2){
+                            cell.s.fill = { fgColor:{rgb:"FFFF00"} };
+                            cell.s.font.bold = true;
+                        }
+                        if(rank === 3){
+                            cell.s.fill = { fgColor:{rgb:"F8CBAD"} };
+                            cell.s.font.bold = true;
+                        }
+                    }
+                }
             }
         }
     }
-}
-        }
-    }
-
+    
     XLSX.utils.book_append_sheet(wb, ws, "Top Sales");
-
     XLSX.writeFile(wb, "Top_Sales_Report.xlsx");
 }
 </script>
