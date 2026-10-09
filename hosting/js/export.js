@@ -16,9 +16,11 @@ export function exportExcel() {
     const amountIdx = storeCols();
     const wb = XLSX.utils.book_new();
     const wsData = [];
+    const titleRows = new Set();
 
     buildReport(rankLimit()).forEach(({ div, topItems, storeRankings }) => {
-        wsData.push([`DIVISION: ${div}`]);
+        titleRows.add(wsData.length);
+        wsData.push([div]);
         wsData.push([]);
         wsData.push(['Rank', 'SKU', 'Item Description', 'Total All Store', ...amountIdx.map((i, k) => storeLabel(k))]);
 
@@ -68,8 +70,8 @@ export function exportExcel() {
                 cell.s.alignment = { horizontal: "center", vertical: "center" };
             }
 
-            // TITLE DIVISION
-            if (C === 0 && String(cell.v).includes("DIVISION:")) {
+            // JUDUL DIVISI
+            if (C === 0 && titleRows.has(R)) {
                 cell.s.font = { bold: true, sz: 14, color: { rgb: "1E293B" } };
                 cell.s.border = {};
             }

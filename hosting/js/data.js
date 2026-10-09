@@ -104,6 +104,9 @@ export function renderDataInfo() {
         info.innerHTML = `📄 Pratinjau <b>${escapeHtml(p.file.name)}</b> (${p.rowCount.toLocaleString('id-ID')} baris) — ${note}`
             + (!canSave && s ? ' <button id="backToSavedBtn" class="underline font-bold ml-1">Kembali ke data server</button>' : '');
         $('backToSavedBtn')?.addEventListener('click', cancelPreview);
+    } else if (state.dataLoading) {
+        info.className = 'mb-3 text-sm text-slate-500';
+        info.textContent = '⏳ Memuat data sales...';
     } else if (s) {
         info.className = 'mb-3 p-3 rounded border text-sm bg-blue-50 border-blue-200 text-slate-800';
         info.innerHTML = `📅 Data sales s/d <b>${formatDate(s.salesUntil)}</b>`
@@ -115,6 +118,8 @@ export function renderDataInfo() {
 }
 
 export async function loadSavedData() {
+    state.dataLoading = true;
+    renderDataInfo();
     try {
         const { upload } = await api('api/data.php');
         state.saved = upload;
@@ -125,10 +130,12 @@ export async function loadSavedData() {
             if (!state.preview) setData(headers, rows);
         }
     } catch (err) {
+        state.dataLoading = false;
         $('dataInfo').className = 'mb-3 text-sm font-bold text-red-600';
         $('dataInfo').textContent = 'Gagal memuat data sales: ' + err.message;
         return;
     }
+    state.dataLoading = false;
     renderDataInfo();
 }
 

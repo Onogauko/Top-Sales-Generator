@@ -2,6 +2,7 @@
 export const state = {
     rawData: [],          // baris CSV (tanpa header) yang sedang ditampilkan
     saved: null,          // info data sales tersimpan di server {id, filename, rowCount, salesUntil, uploadedAt}
+    dataLoading: true,    // sedang memuat data sales dari server
     preview: null,        // file CSV yang baru dipilih & belum disimpan {file, rowCount}
     headers: [],          // baris header CSV
     config: { divisions: {}, stores: [] },

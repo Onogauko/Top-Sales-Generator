@@ -66,7 +66,7 @@ export function renderReport() {
     let html = '';
 
     buildReport(rankLimit()).forEach(({ div, topItems, storeRankings }) => {
-        html += `<h2 class="font-bold text-lg text-slate-800 mt-6 mb-2 uppercase">DIVISION: ${escapeHtml(div)}</h2>`;
+        html += `<h2 class="font-bold text-lg text-slate-800 mt-6 mb-2 uppercase">${escapeHtml(div)}</h2>`;
         html += `<div class="overflow-x-auto"><table class="excel-table"><tr><th class="text-center">Rank</th><th>SKU</th><th>Item Description</th><th>Total All Store</th>`;
         amountIdx.forEach((i, k) => html += `<th>${escapeHtml(storeLabel(k))}</th>`);
         html += '</tr>';
