@@ -1,6 +1,6 @@
 # Top Sales Generator
 
-Webapp statis (GitHub Pages) untuk membuat laporan Top N SKU per divisi dari file CSV, lengkap dengan export Excel.
+Webapp statis (di-host di Vercel) untuk membuat laporan Top N SKU per divisi dari file CSV, lengkap dengan export Excel.
 
 ## File
 
@@ -12,7 +12,7 @@ Webapp statis (GitHub Pages) untuk membuat laporan Top N SKU per divisi dari fil
 1. Login admin dengan **GitHub Token** (lihat di bawah).
 2. Ubah divisi atau kolom store → **Simpan**.
 3. Perubahan langsung di-commit ke `config.json` di repo ini. Di perangkat admin langsung berlaku;
-   user lain mendapat versi baru setelah GitHub Pages selesai update (±1-2 menit, lalu refresh).
+   user lain mendapat versi baru setelah Vercel selesai deploy ulang otomatis dari commit tersebut (±1 menit, lalu refresh).
 
 Tidak perlu download / upload ulang HTML. `config.json` juga bisa diedit langsung di GitHub.
 
