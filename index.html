@@ -29,9 +29,10 @@ body { font-family: 'Segoe UI'; background:#f1f5f9; transition: zoom 0.2s ease; 
         <h1 class="text-2xl font-black text-slate-800 tracking-tight">TOP SALES GENERATOR</h1>
         <p class="text-xs text-slate-500 uppercase font-bold tracking-widest">Retail Data Analysis System</p>
     </div>
-    <div id="adminLoginArea">
-        <input type="password" id="adminPass" placeholder="Password Admin" class="border p-1 text-sm rounded">
+    <div id="adminLoginArea" class="text-right">
+        <input type="password" id="adminPass" placeholder="GitHub Token Admin" class="border p-1 text-sm rounded">
         <button onclick="checkAdmin()" class="bg-slate-800 text-white px-3 py-1 rounded text-sm font-bold">Login Admin</button>
+        <label class="block text-[10px] text-slate-500 mt-1"><input type="checkbox" id="rememberToken"> Ingat di perangkat ini</label>
     </div>
     <button id="logoutBtn" onclick="logoutAdmin()" class="hidden bg-red-600 text-white px-3 py-1 rounded text-sm font-bold">Logout Admin</button>
 </div>
@@ -100,63 +101,132 @@ body { font-family: 'Segoe UI'; background:#f1f5f9; transition: zoom 0.2s ease; 
 <script>
 let rawData=[], headers=[];
 let currentZoom = 1.0;
-// Konfigurasi dimuat dari server (Code.gs, Script Properties) saat halaman dibuka.
+// Konfigurasi divisi & store disimpan di config.json pada repo GitHub ini.
+// Admin menyimpan perubahan langsung ke repo lewat GitHub API (butuh token dengan akses tulis).
+const GITHUB_REPO = 'onogauko/top-sales-generator';
+const CONFIG_PATH = 'config.json';
+const TOKEN_KEY = 'tsg_admin_token';
 let config = { divisions: {}, stores: [] };
 let divisionMapping = config.divisions;
-// Password hanya disimpan di memori selama login, dikirim ke server untuk setiap simpan.
-let adminPassword = null;
-
-function hasServer() {
-    return typeof google !== 'undefined' && google.script && google.script.run;
-}
-
-function callServer(fn, ...args) {
-    return new Promise((resolve, reject) => {
-        if(!hasServer()) return reject(new Error("Halaman harus dibuka lewat URL Web App Google Apps Script."));
-        google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)[fn](...args);
-    });
-}
+let adminToken = null;
+let configSha = null, configBranch = null;
 
 function applyConfig(newConfig) {
     config = newConfig;
     divisionMapping = config.divisions;
-    if(adminPassword) renderAdminPanel();
+    document.getElementById('configStatus').textContent =
+        `Konfigurasi: ${Object.keys(config.divisions).length} divisi, ${config.stores.length} store.`;
+    if(adminToken) renderAdminPanel();
     if(rawData.length > 0) generate();
 }
 
 function loadConfig() {
     const status = document.getElementById('configStatus');
-    callServer('getConfig')
-        .then(c => {
-            applyConfig(c);
-            status.textContent = `Konfigurasi: ${Object.keys(c.divisions).length} divisi, ${c.stores.length} store.`;
-        })
+    // no-cache: selalu cek versi terbaru ke server (GitHub Pages men-cache file ±10 menit).
+    fetch(CONFIG_PATH, { cache: 'no-cache' })
+        .catch(() => fetch(`https://raw.githubusercontent.com/${GITHUB_REPO}/HEAD/${CONFIG_PATH}`, { cache: 'no-cache' }))
+        .then(res => { if(!res.ok) throw new Error(`HTTP ${res.status}`); return res.json(); })
+        .then(c => applyConfig(normalizeConfig(c)))
         .catch(err => {
             status.textContent = "Gagal memuat konfigurasi: " + err.message;
             status.className = "mb-4 text-xs font-bold text-red-600";
         });
 }
 
-function checkAdmin() {
-    const input = document.getElementById('adminPass').value;
-    callServer('checkAdmin', input)
-        .then(ok => {
-            if(!ok) return alert("Password Salah!");
-            adminPassword = input;
-            document.getElementById('adminPanel').style.display = 'block';
-            document.getElementById('adminLoginArea').classList.add('hidden');
-            document.getElementById('logoutBtn').classList.remove('hidden');
-            renderAdminPanel();
-        })
-        .catch(err => alert(err.message));
+async function githubApi(path, options = {}) {
+    const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO}${path}`, {
+        ...options,
+        headers: { 'Accept': 'application/vnd.github+json', 'Authorization': `Bearer ${adminToken}`, ...(options.headers || {}) }
+    });
+    const body = await res.json().catch(() => ({}));
+    if(!res.ok) {
+        const err = new Error(body.message || `HTTP ${res.status}`);
+        err.status = res.status;
+        throw err;
+    }
+    return body;
+}
+
+function base64ToUtf8(b64) {
+    const bytes = Uint8Array.from(atob(b64.replace(/\s/g, '')), c => c.charCodeAt(0));
+    return new TextDecoder().decode(bytes);
+}
+
+function utf8ToBase64(str) {
+    let bin = '';
+    new TextEncoder().encode(str).forEach(b => bin += String.fromCharCode(b));
+    return btoa(bin);
+}
+
+// Ambil config.json langsung dari repo (bukan dari cache GitHub Pages) beserta sha-nya,
+// supaya admin selalu mengedit versi terbaru dan bentrokan simpan bisa terdeteksi.
+async function loadConfigFromGitHub() {
+    const file = await githubApi(`/contents/${CONFIG_PATH}?ref=${encodeURIComponent(configBranch)}`);
+    configSha = file.sha;
+    applyConfig(normalizeConfig(JSON.parse(base64ToUtf8(file.content))));
+}
+
+function readSavedToken() {
+    try { return localStorage.getItem(TOKEN_KEY); } catch(e) { return null; }
+}
+
+function writeSavedToken(token) {
+    try { token ? localStorage.setItem(TOKEN_KEY, token) : localStorage.removeItem(TOKEN_KEY); } catch(e) {}
+}
+
+async function checkAdmin(savedToken) {
+    const token = savedToken || document.getElementById('adminPass').value.trim();
+    if(!token) return alert("Masukkan GitHub Token!");
+    adminToken = token;
+    try {
+        const repo = await githubApi('');
+        if(!repo.permissions || !repo.permissions.push) throw new Error("Akun ini tidak punya akses tulis ke repo.");
+        configBranch = repo.default_branch;
+        await loadConfigFromGitHub();
+    } catch(err) {
+        adminToken = null;
+        if(savedToken) writeSavedToken(null);
+        return alert("Login gagal: " + (err.status === 401 ? "Token tidak valid / kadaluarsa." : err.message));
+    }
+    if(!savedToken && document.getElementById('rememberToken').checked) writeSavedToken(token);
+    document.getElementById('adminPanel').style.display = 'block';
+    document.getElementById('adminLoginArea').classList.add('hidden');
+    document.getElementById('logoutBtn').classList.remove('hidden');
+    renderAdminPanel();
 }
 
 function logoutAdmin() {
-    adminPassword = null;
+    adminToken = null;
+    configSha = null;
+    writeSavedToken(null);
     document.getElementById('adminPanel').style.display = 'none';
     document.getElementById('adminLoginArea').classList.remove('hidden');
     document.getElementById('logoutBtn').classList.add('hidden');
     document.getElementById('adminPass').value = "";
+}
+
+// Rapikan & validasi konfigurasi: kode dept harus angka, kolom store huruf Excel, tanpa duplikat.
+function normalizeConfig(c) {
+    const divisions = {};
+    Object.keys((c && c.divisions) || {}).forEach(name => {
+        const div = String(name).trim().toUpperCase();
+        const codes = [...new Set((c.divisions[name] || []).map(x => String(x).trim()).filter(x => /^\d+$/.test(x)))];
+        if(div && codes.length) divisions[div] = codes;
+    });
+    const stores = [];
+    ((c && c.stores) || []).forEach(s => {
+        const col = String((s && s.col) || '').trim().toUpperCase();
+        if(!/^[A-Z]{1,3}$/.test(col) || stores.some(x => x.col === col)) return;
+        stores.push({ col, name: String(s.name || '').trim() });
+    });
+    return { divisions, stores };
+}
+
+// Format config.json: satu baris per divisi / store, supaya diff di GitHub mudah dibaca.
+function formatConfig(c) {
+    const divs = Object.entries(c.divisions).map(([k, v]) => `    ${JSON.stringify(k)}: ${JSON.stringify(v)}`).join(',\n');
+    const stores = c.stores.map(s => `    ${JSON.stringify(s)}`).join(',\n');
+    return `{\n  "divisions": {\n${divs}\n  },\n  "stores": [\n${stores}\n  ]\n}\n`;
 }
 
 function renderAdminPanel() {
@@ -180,26 +250,42 @@ function renderDivisionList() {
     });
 }
 
-// Simpan ke server; tampilan baru diperbarui setelah server mengonfirmasi.
-function saveConfig(newConfig) {
+// Simpan ke config.json di repo (1 commit per simpan); tampilan diperbarui setelah GitHub mengonfirmasi.
+async function saveConfig(newConfig) {
     const status = document.getElementById('saveStatus');
     const buttons = document.querySelectorAll('#adminPanel .save-btn');
+    const setStatus = (text, color) => { status.textContent = text; status.className = `mt-3 text-xs font-bold ${color}`; };
     buttons.forEach(b => b.disabled = true);
-    status.textContent = "Menyimpan...";
-    status.className = "mt-3 text-xs font-bold text-slate-500";
-    return callServer('saveConfig', adminPassword, newConfig)
-        .then(saved => {
-            applyConfig(saved);
-            status.textContent = "✓ Tersimpan & langsung berlaku untuk semua user.";
-            status.className = "mt-3 text-xs font-bold text-green-700";
-            return true;
-        })
-        .catch(err => {
-            status.textContent = "Gagal menyimpan: " + err.message;
-            status.className = "mt-3 text-xs font-bold text-red-600";
-            return false;
-        })
-        .finally(() => buttons.forEach(b => b.disabled = false));
+    setStatus("Menyimpan ke GitHub...", "text-slate-500");
+    try {
+        const clean = normalizeConfig(newConfig);
+        if(!clean.stores.length) throw new Error("Minimal harus ada 1 kolom store.");
+        const res = await githubApi(`/contents/${CONFIG_PATH}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+                message: 'Update konfigurasi divisi/store dari panel admin',
+                content: utf8ToBase64(formatConfig(clean)),
+                sha: configSha,
+                branch: configBranch
+            })
+        });
+        configSha = res.content.sha;
+        applyConfig(clean);
+        setStatus("✓ Tersimpan ke GitHub. Sudah berlaku di perangkat ini; user lain mendapat versi baru setelah GitHub Pages update (±1-2 menit, lalu refresh).", "text-green-700");
+        return true;
+    } catch(err) {
+        if(err.status === 409) {
+            await loadConfigFromGitHub().catch(() => {});
+            setStatus("Konfigurasi baru saja diubah di tempat lain. Data terbaru sudah dimuat, silakan ulangi perubahan Anda.", "text-red-600");
+        } else if(err.status === 403 || err.status === 404) {
+            setStatus("Gagal menyimpan: token tidak punya izin 'Contents: Read and write' untuk repo ini.", "text-red-600");
+        } else {
+            setStatus("Gagal menyimpan: " + err.message, "text-red-600");
+        }
+        return false;
+    } finally {
+        buttons.forEach(b => b.disabled = false);
+    }
 }
 
 function addOrUpdateDivision() {
@@ -674,6 +760,7 @@ if(C >= 3 && typeof cell.v === "number"){
 }
 
 loadConfig();
+if(readSavedToken()) checkAdmin(readSavedToken());
 </script>
 </body>
 </html>

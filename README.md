@@ -1,21 +1,26 @@
 # Top Sales Generator
 
-Webapp Google Apps Script untuk membuat laporan Top N SKU per divisi dari file CSV, lengkap dengan export Excel.
+Webapp statis (GitHub Pages) untuk membuat laporan Top N SKU per divisi dari file CSV, lengkap dengan export Excel.
 
 ## File
 
-- `Code.gs` — backend: menyajikan halaman, menyimpan konfigurasi divisi & store di Script Properties, cek password admin.
 - `index.html` — tampilan & logika laporan.
-
-## Setup / Deploy
-
-1. Di project Apps Script, buat file `Code.gs` dan file HTML bernama `index`, lalu salin isi kedua file ini.
-2. **Project Settings → Script Properties → Add script property**: `ADMIN_PASSWORD` = password admin.
-3. **Deploy → Manage deployments → Edit → Version: New version → Deploy** (URL Web App tetap sama).
+- `config.json` — konfigurasi divisi (kode dept) dan kolom store. Dibaca setiap halaman dibuka.
 
 ## Mengubah divisi / store
 
-Login admin di halaman → ubah divisi atau kolom store → **Simpan**. Perubahan langsung tersimpan di server
-dan berlaku untuk semua user (cukup refresh halaman). Tidak perlu download atau deploy ulang HTML.
+1. Login admin dengan **GitHub Token** (lihat di bawah).
+2. Ubah divisi atau kolom store → **Simpan**.
+3. Perubahan langsung di-commit ke `config.json` di repo ini. Di perangkat admin langsung berlaku;
+   user lain mendapat versi baru setelah GitHub Pages selesai update (±1-2 menit, lalu refresh).
 
-Konfigurasi awal diambil dari `DEFAULT_CONFIG` di `Code.gs` sampai admin menyimpan perubahan pertama.
+Tidak perlu download / upload ulang HTML. `config.json` juga bisa diedit langsung di GitHub.
+
+## Membuat GitHub Token admin (sekali saja)
+
+GitHub → Settings → Developer settings → **Fine-grained personal access tokens** → Generate new token:
+
+- Repository access: **Only select repositories** → `top-sales-generator`
+- Permissions → Repository permissions → **Contents: Read and write**
+
+Token hanya memberi akses ke repo ini. Jangan centang "Ingat di perangkat ini" di komputer bersama.
