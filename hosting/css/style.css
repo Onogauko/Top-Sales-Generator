@@ -1,0 +1,9 @@
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f1f5f9; transition: zoom 0.2s ease; }
+.excel-table { border-collapse: collapse; border: 2px solid black; font-size: 11px; background: white; width: 100%; }
+.excel-table th, .excel-table td { border: 1px solid #444; padding: 3px 6px; white-space: nowrap; }
+.excel-table td.desc { white-space: normal; min-width: 180px; }
+.rank-1 { background: #00b050; }
+.rank-2 { background: #ffff00; }
+.rank-3 { background: #f8cbad; }
+.num-cell { text-align: right; font-family: monospace; }
+.text-center { text-align: center; }

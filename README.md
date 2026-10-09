@@ -26,3 +26,17 @@ Gunakan password yang tidak mudah ditebak (minimal 8 karakter, lebih panjang leb
 Login admin → ubah divisi atau kolom store → **Simpan**. Perubahan langsung di-commit ke `config.json`.
 Di perangkat admin langsung berlaku; user lain mendapat versi baru setelah GitHub Pages selesai update
 (±1 menit, lalu refresh). Tidak perlu download / upload ulang HTML.
+
+---
+
+# Versi hosting (PHP + MySQL) — folder `hosting/`
+
+Untuk shared hosting (cPanel). Konfigurasi divisi & store disimpan di database MySQL, admin login dengan password biasa.
+
+1. **phpMyAdmin**: jalankan `hosting/database/schema.sql` (membuat tabel `tsg_settings` & `tsg_login_attempts` + data awal).
+2. Salin `hosting/config/db.example.php` menjadi `config/db.php` dan isi nama database, user, password.
+3. Upload **isi** folder `hosting/` ke server (misal `public_html/top-sales/`), termasuk `.htaccess`.
+4. Buka webapp → login admin dengan password awal **`admin12345`** → wajib ganti password.
+
+Perubahan divisi / store langsung tersimpan di server dan berlaku untuk semua user (cukup refresh).
+Jika tampilan belum berubah setelah upload file baru: purge cache Cloudflare.
