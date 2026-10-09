@@ -20,8 +20,24 @@ header('Cache-Control: no-store');
 
 set_exception_handler(function (Throwable $e) {
     error_log('[top-sales] ' . $e);
-    fail('Terjadi kesalahan server.', 500);
+    fail(db_error_hint($e) ?? 'Terjadi kesalahan server (detail ada di file error_log di folder api/).', 500);
 });
+
+// Pesan yang jelas untuk kesalahan setup database yang umum (tanpa membocorkan password).
+function db_error_hint(Throwable $e): ?string
+{
+    if (!$e instanceof PDOException) return null;
+    $code = (int)($e->errorInfo[1] ?? $e->getCode());
+    $hints = [
+        1045 => 'Login database ditolak: cek user & password di config/db.php (pakai nama user lengkap dengan awalan cPanel).',
+        1044 => 'User database belum punya akses ke database ini: cPanel > MySQL Databases > Add User To Database, centang ALL PRIVILEGES.',
+        1049 => 'Database tidak ditemukan: cek nama database di config/db.php (pakai nama lengkap dengan awalan cPanel).',
+        2002 => 'Tidak bisa terhubung ke server database: cek host di config/db.php (biasanya localhost).',
+        2005 => 'Host database tidak dikenal: cek host di config/db.php (biasanya localhost).',
+        1146 => 'Tabel belum ada: jalankan database/schema.sql di phpMyAdmin, pada database yang sama dengan config/db.php.',
+    ];
+    return isset($hints[$code]) ? 'Database: ' . $hints[$code] : null;
+}
 
 function respond(array $data = []): void
 {
