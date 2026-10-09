@@ -39,4 +39,8 @@ Untuk shared hosting (cPanel). Konfigurasi divisi & store disimpan di database M
 4. Buka webapp → login admin dengan password awal **`admin12345`** → wajib ganti password.
 
 Perubahan divisi / store langsung tersimpan di server dan berlaku untuk semua user (cukup refresh).
+
+Data sales: admin upload CSV → pratinjau → isi tanggal "Data sales s/d" → **Simpan ke Server**.
+Data tersimpan di tabel `tsg_uploads` (10 upload terakhir) dan langsung tampil untuk semua user,
+dengan keterangan tanggal di atas tabel. User biasa yang memilih CSV hanya melihatnya di perangkatnya sendiri.
 Jika tampilan belum berubah setelah upload file baru: purge cache Cloudflare.

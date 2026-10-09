@@ -1,6 +1,7 @@
 import { state } from './core/state.js';
 import { api } from './core/api.js';
 import { renderReport } from './report.js';
+import { renderDataInfo } from './data.js';
 
 const $ = id => document.getElementById(id);
 
@@ -39,6 +40,7 @@ function applyAuth(data) {
     $('mustChangeNotice').classList.toggle('hidden', !state.mustChange);
     $('adminTools').classList.toggle('hidden', state.mustChange);
     if (state.admin) renderAdminPanel();
+    renderDataInfo();
 }
 
 export async function loadAuth() {

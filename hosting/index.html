@@ -71,7 +71,7 @@
 
 <div class="flex flex-wrap gap-4 items-end mb-4">
     <div>
-        <label class="block text-sm font-bold mb-1 text-slate-700">Pilih File CSV:</label>
+        <label class="block text-sm font-bold mb-1 text-slate-700">Upload File CSV:</label>
         <input type="file" id="csvFile" accept=".csv,text/csv" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
     </div>
 
@@ -97,7 +97,16 @@
     </button>
 </div>
 
+<div id="uploadBar" class="hidden mb-4 p-3 bg-amber-50 border border-amber-300 rounded flex flex-wrap gap-2 items-center">
+    <label class="text-sm font-bold text-amber-900">Data sales s/d
+        <input type="date" id="salesUntil" class="ml-1 border rounded p-1 text-sm font-normal">
+    </label>
+    <button id="saveUploadBtn" class="bg-blue-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-blue-700 disabled:opacity-50">Simpan ke Server</button>
+    <button id="cancelUploadBtn" class="bg-gray-400 text-white px-4 py-2 rounded text-sm">Batal</button>
+</div>
+
 <hr class="mb-4">
+<div id="dataInfo" class="mb-3 text-sm text-slate-500">Memuat data sales...</div>
 <div id="report"></div>
 
 <script type="module" src="js/app.js"></script>
