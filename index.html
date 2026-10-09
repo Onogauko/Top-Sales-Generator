@@ -29,38 +29,60 @@ body { font-family: 'Segoe UI'; background:#f1f5f9; transition: zoom 0.2s ease; 
         <h1 class="text-2xl font-black text-slate-800 tracking-tight">TOP SALES GENERATOR</h1>
         <p class="text-xs text-slate-500 uppercase font-bold tracking-widest">Retail Data Analysis System</p>
     </div>
-    <div id="adminLoginArea">
-        <input type="password" id="adminPass" placeholder="Password Admin" class="border p-1 text-sm rounded">
-        <button onclick="checkAdmin()" class="bg-slate-800 text-white px-3 py-1 rounded text-sm font-bold">Login Admin</button>
+    <div id="adminLoginArea" class="text-right">
+        <input type="password" id="adminPass" placeholder="Password Admin" onkeydown="if(event.key==='Enter') checkAdmin()" class="border p-1 text-sm rounded">
+        <button id="loginBtn" onclick="checkAdmin()" class="bg-slate-800 text-white px-3 py-1 rounded text-sm font-bold disabled:opacity-50">Login Admin</button>
+        <button onclick="document.getElementById('setupPanel').classList.toggle('hidden')" class="block ml-auto mt-1 text-[10px] text-slate-500 underline">Setup / reset password admin</button>
     </div>
     <button id="logoutBtn" onclick="logoutAdmin()" class="hidden bg-red-600 text-white px-3 py-1 rounded text-sm font-bold">Logout Admin</button>
+</div>
+
+<!-- SETUP PASSWORD ADMIN (sekali oleh pemilik repo, atau jika password lupa) -->
+<div id="setupPanel" class="hidden mb-6 bg-white p-6 rounded-lg shadow-md border-t-4 border-amber-500 max-w-xl">
+    <h2 class="font-bold text-lg mb-2">🔑 Setup / Reset Password Admin</h2>
+    <p class="text-xs text-slate-600 mb-3">Cukup sekali oleh pemilik repo. Masukkan GitHub Token (fine-grained, hanya repo ini, izin <b>Contents: Read and write</b>) dan password admin baru. Token disimpan <b>terenkripsi</b> dengan password tersebut di <code>admin.json</code>, jadi setelah ini admin cukup login pakai password.</p>
+    <input type="password" id="setupToken" placeholder="GitHub Token (github_pat_...)" class="w-full mb-2 p-2 border rounded text-sm">
+    <input type="password" id="setupPass" placeholder="Password admin baru (min. 8 karakter)" class="w-full mb-2 p-2 border rounded text-sm">
+    <input type="password" id="setupPass2" placeholder="Ulangi password" class="w-full mb-2 p-2 border rounded text-sm">
+    <button id="setupBtn" onclick="setupAdmin()" class="w-full bg-amber-600 text-white py-2 rounded font-bold hover:bg-amber-700 disabled:opacity-50">Simpan Password Admin</button>
 </div>
 
 <!-- PANEL PENGATURAN ADMIN -->
 <div id="adminPanel" class="admin-locked mb-6 bg-white p-6 rounded-lg shadow-md border-t-4 border-blue-600">
     <h2 class="font-bold text-lg mb-4 flex items-center">⚙️ Control Panel - Management Divisi</h2>
     
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div class="bg-gray-50 p-4 rounded border">
             <h3 class="font-bold text-sm mb-3">Tambah / Edit Divisi</h3>
             <input type="text" id="newDivName" placeholder="Nama Divisi" class="w-full mb-2 p-2 border rounded text-sm uppercase">
             <textarea id="newDivCodes" placeholder="Masukkan Kode Dept (pisahkan dengan koma)" class="w-full mb-2 p-2 border rounded text-sm h-20"></textarea>
-            <button onclick="addOrUpdateDivision()" class="w-full bg-blue-600 text-white py-2 rounded font-bold hover:bg-blue-700">Simpan Divisi</button>
+            <button onclick="addOrUpdateDivision()" class="save-btn w-full bg-blue-600 text-white py-2 rounded font-bold hover:bg-blue-700 disabled:opacity-50">Simpan Divisi</button>
         </div>
 
         <div class="bg-gray-50 p-4 rounded border">
             <h3 class="font-bold text-sm mb-3">Daftar Divisi Saat Ini</h3>
             <div id="divisionListDisplay" class="text-xs space-y-2 max-h-40 overflow-y-auto"></div>
         </div>
+
+        <div class="bg-gray-50 p-4 rounded border">
+            <h3 class="font-bold text-sm mb-1">Kolom Store</h3>
+            <p class="text-[10px] text-slate-500 mb-2">Satu baris per store: <code>KOLOM = Nama Store</code>. Nama boleh kosong (pakai header CSV). Contoh: <code>M = AEON BSD</code></p>
+            <textarea id="storeConfigInput" class="w-full mb-2 p-2 border rounded text-xs font-mono h-28"></textarea>
+            <button onclick="saveStores()" class="save-btn w-full bg-blue-600 text-white py-2 rounded font-bold hover:bg-blue-700 disabled:opacity-50">Simpan Store</button>
+        </div>
     </div>
-    
-    <div class="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
-        <p class="text-[10px] text-yellow-700 font-bold italic">**PETUNJUK UPDATE**: Klik tombol di bawah, buka file yang terunduh, lalu copy-paste seluruh isinya ke Google Apps Script Anda untuk menyimpan perubahan kategori secara permanen.</p>
-        <button onclick="downloadSelf()" class="mt-2 bg-green-700 text-white px-4 py-2 rounded text-xs font-bold hover:bg-green-800">
-            💾 Download File HTML untuk Update Source
-        </button>
+
+    <div class="mt-4 flex flex-wrap gap-2 items-center">
+        <span class="text-xs font-bold">Ganti password admin:</span>
+        <input type="password" id="changePass" placeholder="Password baru" class="p-1 border rounded text-xs">
+        <input type="password" id="changePass2" placeholder="Ulangi password" class="p-1 border rounded text-xs">
+        <button onclick="changePassword()" class="save-btn bg-slate-700 text-white px-3 py-1 rounded text-xs font-bold disabled:opacity-50">Ganti Password</button>
     </div>
+
+    <p id="saveStatus" class="mt-3 text-xs font-bold"></p>
 </div>
+
+<p id="configStatus" class="mb-4 text-xs text-slate-500">Memuat konfigurasi...</p>
 
 <div class="flex flex-wrap gap-4 items-end mb-4">
     <div>
@@ -93,42 +115,261 @@ body { font-family: 'Segoe UI'; background:#f1f5f9; transition: zoom 0.2s ease; 
 <hr class="mb-4">
 <div id="report"></div>
 
-<!-- KONFIGURASI MASTER TERBARU -->
-<script id="masterConfig" type="application/json">
-{
-    "GROCERY": ["2001", "2002", "2003", "2004", "2005", "2006", "2007", "2008", "2009", "2010", "2011", "2012", "2013", "5201", "5202", "5203", "5204", "5205"],
-    "DND": ["2025", "2026", "2027", "2028", "2029", "2030"],
-    "FISH": ["2031", "2032"],
-    "MEAT": ["2033", "2034", "2035", "2036", "5212"],
-    "PRODUCE": ["2037", "2038", "5213"],
-    "DELICA": ["2039", "2040", "5214"],
-    "BAKERY": ["2041", "2042", "5216"],
-    "HBC": ["2018", "2019", "2020", "2021", "2022", "2023", "5210", "2024", "2702", "2703", "2704", "2705", "2706", "2707", "5207", "5208", "5209", "5701", "5702", "5703", "5704", "5705"],
-    "NONFOODS": ["2014", "2015", "2016", "2017", "2701", "5206"]
-}
-</script>
-
 <script>
 let rawData=[], headers=[];
 let currentZoom = 1.0;
-let divisionMapping = JSON.parse(document.getElementById('masterConfig').textContent);
-const ADMIN_PASSWORD = "aeon123"; 
+// Konfigurasi divisi & store disimpan di config.json pada repo GitHub ini.
+// Admin menyimpan perubahan langsung ke repo lewat GitHub API. Token GitHub-nya disimpan di admin.json
+// dalam bentuk terenkripsi (AES-GCM, kunci dari password admin via PBKDF2), jadi admin cukup tahu password.
+const GITHUB_REPO = 'onogauko/top-sales-generator';
+const CONFIG_PATH = 'config.json';
+const ADMIN_PATH = 'admin.json';
+const PBKDF2_ITERATIONS = 600000;
+const MIN_PASSWORD_LENGTH = 8;
+let config = { divisions: {}, stores: [] };
+let divisionMapping = config.divisions;
+let adminToken = null;
+let configSha = null, configBranch = null;
 
-function checkAdmin() {
-    const input = document.getElementById('adminPass').value;
-    if(input === ADMIN_PASSWORD) {
-        document.getElementById('adminPanel').style.display = 'block';
-        document.getElementById('adminLoginArea').classList.add('hidden');
-        document.getElementById('logoutBtn').classList.remove('hidden');
-        renderDivisionList();
-    } else { alert("Password Salah!"); }
+function applyConfig(newConfig) {
+    config = newConfig;
+    divisionMapping = config.divisions;
+    document.getElementById('configStatus').textContent =
+        `Konfigurasi: ${Object.keys(config.divisions).length} divisi, ${config.stores.length} store.`;
+    if(adminToken) renderAdminPanel();
+    if(rawData.length > 0) generate();
+}
+
+// Baca file JSON publik dari website (no-cache: selalu cek versi terbaru);
+// jika belum ada di website (belum ter-deploy) atau dibuka sebagai file lokal, ambil langsung dari repo.
+async function fetchPublicJson(path) {
+    try {
+        const res = await fetch(path, { cache: 'no-cache' });
+        if(res.ok) return await res.json();
+    } catch(e) {}
+    const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/${path}`,
+        { cache: 'no-cache', headers: { 'Accept': 'application/vnd.github.raw+json' } });
+    if(res.status === 404) return null;
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+}
+
+function loadConfig() {
+    const status = document.getElementById('configStatus');
+    fetchPublicJson(CONFIG_PATH)
+        .then(c => {
+            if(!c) throw new Error(`${CONFIG_PATH} tidak ditemukan`);
+            applyConfig(normalizeConfig(c));
+        })
+        .catch(err => {
+            status.textContent = "Gagal memuat konfigurasi: " + err.message;
+            status.className = "mb-4 text-xs font-bold text-red-600";
+        });
+}
+
+async function githubApi(path, options = {}) {
+    const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO}${path}`, {
+        ...options,
+        headers: { 'Accept': 'application/vnd.github+json', 'Authorization': `Bearer ${adminToken}`, ...(options.headers || {}) }
+    });
+    const body = await res.json().catch(() => ({}));
+    if(!res.ok) {
+        const err = new Error(body.message || `HTTP ${res.status}`);
+        err.status = res.status;
+        throw err;
+    }
+    return body;
+}
+
+function bytesToBase64(bytes) {
+    let bin = '';
+    bytes.forEach(b => bin += String.fromCharCode(b));
+    return btoa(bin);
+}
+
+function base64ToBytes(b64) {
+    return Uint8Array.from(atob(b64.replace(/\s/g, '')), c => c.charCodeAt(0));
+}
+
+function base64ToUtf8(b64) {
+    return new TextDecoder().decode(base64ToBytes(b64));
+}
+
+function utf8ToBase64(str) {
+    return bytesToBase64(new TextEncoder().encode(str));
+}
+
+async function deriveKey(password, salt, iterations) {
+    const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']);
+    return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations, hash: 'SHA-256' },
+        base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+}
+
+async function encryptToken(token, password) {
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const key = await deriveKey(password, salt, PBKDF2_ITERATIONS);
+    const data = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(token)));
+    return { iterations: PBKDF2_ITERATIONS, salt: bytesToBase64(salt), iv: bytesToBase64(iv), data: bytesToBase64(data) };
+}
+
+// Gagal (throw) jika password salah, karena AES-GCM memverifikasi isi terenkripsi.
+async function decryptToken(blob, password) {
+    const key = await deriveKey(password, base64ToBytes(blob.salt), blob.iterations);
+    const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: base64ToBytes(blob.iv) }, key, base64ToBytes(blob.data));
+    return new TextDecoder().decode(plain);
+}
+
+// Ambil config.json langsung dari repo (bukan dari website yang belum ter-deploy ulang) beserta sha-nya,
+// supaya admin selalu mengedit versi terbaru dan bentrokan simpan bisa terdeteksi.
+async function loadConfigFromGitHub() {
+    const file = await githubApi(`/contents/${CONFIG_PATH}?ref=${encodeURIComponent(configBranch)}`);
+    configSha = file.sha;
+    applyConfig(normalizeConfig(JSON.parse(base64ToUtf8(file.content))));
+}
+
+// Pastikan adminToken valid & punya akses tulis, lalu catat branch utama repo.
+async function verifyToken() {
+    const repo = await githubApi('');
+    if(!repo.permissions || !repo.permissions.push) throw new Error("Token tidak punya akses tulis ke repo.");
+    configBranch = repo.default_branch;
+}
+
+// Enkripsi adminToken dengan password lalu commit ke admin.json (buat baru atau timpa).
+async function saveEncryptedToken(password) {
+    const blob = await encryptToken(adminToken, password);
+    let sha;
+    try {
+        sha = (await githubApi(`/contents/${ADMIN_PATH}?ref=${encodeURIComponent(configBranch)}`)).sha;
+    } catch(err) {
+        if(err.status !== 404) throw err;
+    }
+    await githubApi(`/contents/${ADMIN_PATH}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+            message: 'Update password admin',
+            content: utf8ToBase64(JSON.stringify(blob, null, 2) + '\n'),
+            sha,
+            branch: configBranch
+        })
+    });
+}
+
+function checkNewPassword(pass, pass2) {
+    if(pass.length < MIN_PASSWORD_LENGTH) return `Password minimal ${MIN_PASSWORD_LENGTH} karakter.`;
+    if(pass !== pass2) return "Ulangi password tidak sama.";
+    return null;
+}
+
+async function setupAdmin() {
+    const token = document.getElementById('setupToken').value.trim();
+    const pass = document.getElementById('setupPass').value;
+    const pass2 = document.getElementById('setupPass2').value;
+    if(!token) return alert("Masukkan GitHub Token!");
+    const problem = checkNewPassword(pass, pass2);
+    if(problem) return alert(problem);
+    const btn = document.getElementById('setupBtn');
+    btn.disabled = true;
+    adminToken = token;
+    try {
+        await verifyToken();
+        await saveEncryptedToken(pass);
+        ['setupToken', 'setupPass', 'setupPass2'].forEach(id => document.getElementById(id).value = "");
+        document.getElementById('setupPanel').classList.add('hidden');
+        alert("Password admin tersimpan. Silakan login dengan password tersebut.");
+    } catch(err) {
+        alert("Setup gagal: " + (err.status === 401 ? "Token tidak valid / kadaluarsa." : err.message));
+    } finally {
+        adminToken = null;
+        btn.disabled = false;
+    }
+}
+
+async function checkAdmin() {
+    const pass = document.getElementById('adminPass').value;
+    if(!pass) return alert("Masukkan password admin!");
+    const btn = document.getElementById('loginBtn');
+    btn.disabled = true;
+    try {
+        const blob = await fetchPublicJson(ADMIN_PATH);
+        if(!blob) throw new Error("Password admin belum di-setup. Klik 'Setup / reset password admin'.");
+        try {
+            adminToken = await decryptToken(blob, pass);
+        } catch(e) {
+            throw new Error("Password salah!");
+        }
+        await verifyToken();
+        await loadConfigFromGitHub();
+    } catch(err) {
+        adminToken = null;
+        const msg = err.status === 401 ? "Token GitHub sudah tidak berlaku. Buat token baru lalu lakukan 'Setup / reset password admin'." : err.message;
+        return alert(msg);
+    } finally {
+        btn.disabled = false;
+    }
+    document.getElementById('adminPanel').style.display = 'block';
+    document.getElementById('adminLoginArea').classList.add('hidden');
+    document.getElementById('setupPanel').classList.add('hidden');
+    document.getElementById('logoutBtn').classList.remove('hidden');
+    document.getElementById('adminPass').value = "";
+    renderAdminPanel();
 }
 
 function logoutAdmin() {
+    adminToken = null;
+    configSha = null;
     document.getElementById('adminPanel').style.display = 'none';
     document.getElementById('adminLoginArea').classList.remove('hidden');
     document.getElementById('logoutBtn').classList.add('hidden');
     document.getElementById('adminPass').value = "";
+}
+
+async function changePassword() {
+    const pass = document.getElementById('changePass').value;
+    const pass2 = document.getElementById('changePass2').value;
+    const problem = checkNewPassword(pass, pass2);
+    if(problem) return alert(problem);
+    const status = document.getElementById('saveStatus');
+    try {
+        await saveEncryptedToken(pass);
+        document.getElementById('changePass').value = "";
+        document.getElementById('changePass2').value = "";
+        status.textContent = "✓ Password admin diganti.";
+        status.className = "mt-3 text-xs font-bold text-green-700";
+    } catch(err) {
+        status.textContent = "Gagal ganti password: " + err.message;
+        status.className = "mt-3 text-xs font-bold text-red-600";
+    }
+}
+
+// Rapikan & validasi konfigurasi: kode dept harus angka, kolom store huruf Excel, tanpa duplikat.
+function normalizeConfig(c) {
+    const divisions = {};
+    Object.keys((c && c.divisions) || {}).forEach(name => {
+        const div = String(name).trim().toUpperCase();
+        const codes = [...new Set((c.divisions[name] || []).map(x => String(x).trim()).filter(x => /^\d+$/.test(x)))];
+        if(div && codes.length) divisions[div] = codes;
+    });
+    const stores = [];
+    ((c && c.stores) || []).forEach(s => {
+        const col = String((s && s.col) || '').trim().toUpperCase();
+        if(!/^[A-Z]{1,3}$/.test(col) || stores.some(x => x.col === col)) return;
+        stores.push({ col, name: String(s.name || '').trim() });
+    });
+    return { divisions, stores };
+}
+
+// Format config.json: satu baris per divisi / store, supaya diff di GitHub mudah dibaca.
+function formatConfig(c) {
+    const divs = Object.entries(c.divisions).map(([k, v]) => `    ${JSON.stringify(k)}: ${JSON.stringify(v)}`).join(',\n');
+    const stores = c.stores.map(s => `    ${JSON.stringify(s)}`).join(',\n');
+    return `{\n  "divisions": {\n${divs}\n  },\n  "stores": [\n${stores}\n  ]\n}\n`;
+}
+
+function renderAdminPanel() {
+    renderDivisionList();
+    document.getElementById('storeConfigInput').value =
+        config.stores.map(s => s.name ? `${s.col} = ${s.name}` : s.col).join('\n');
 }
 
 function renderDivisionList() {
@@ -137,9 +378,51 @@ function renderDivisionList() {
     Object.keys(divisionMapping).forEach(div => {
         const divEl = document.createElement('div');
         divEl.className = "flex justify-between items-center bg-white p-2 border rounded mb-1";
-        divEl.innerHTML = `<span><strong>${div}</strong> (${divisionMapping[div].length} Dept)</span><div><button onclick="editDiv('${div}')" class="text-blue-600 mr-2 text-[10px]">Edit</button><button onclick="deleteDiv('${div}')" class="text-red-600 text-[10px]">Hapus</button></div>`;
+        divEl.innerHTML = `<span><strong></strong> (${divisionMapping[div].length} Dept)</span><div><button class="text-blue-600 mr-2 text-[10px]">Edit</button><button class="text-red-600 text-[10px]">Hapus</button></div>`;
+        divEl.querySelector('strong').textContent = div;
+        const [editBtn, delBtn] = divEl.querySelectorAll('button');
+        editBtn.addEventListener('click', () => editDiv(div));
+        delBtn.addEventListener('click', () => deleteDiv(div));
         list.appendChild(divEl);
     });
+}
+
+// Simpan ke config.json di repo (1 commit per simpan); tampilan diperbarui setelah GitHub mengonfirmasi.
+async function saveConfig(newConfig) {
+    const status = document.getElementById('saveStatus');
+    const buttons = document.querySelectorAll('#adminPanel .save-btn');
+    const setStatus = (text, color) => { status.textContent = text; status.className = `mt-3 text-xs font-bold ${color}`; };
+    buttons.forEach(b => b.disabled = true);
+    setStatus("Menyimpan ke GitHub...", "text-slate-500");
+    try {
+        const clean = normalizeConfig(newConfig);
+        if(!clean.stores.length) throw new Error("Minimal harus ada 1 kolom store.");
+        const res = await githubApi(`/contents/${CONFIG_PATH}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+                message: 'Update konfigurasi divisi/store dari panel admin',
+                content: utf8ToBase64(formatConfig(clean)),
+                sha: configSha,
+                branch: configBranch
+            })
+        });
+        configSha = res.content.sha;
+        applyConfig(clean);
+        setStatus("✓ Tersimpan ke GitHub. Sudah berlaku di perangkat ini; user lain mendapat versi baru setelah website selesai update (±1 menit, lalu refresh).", "text-green-700");
+        return true;
+    } catch(err) {
+        if(err.status === 409) {
+            await loadConfigFromGitHub().catch(() => {});
+            setStatus("Konfigurasi baru saja diubah di tempat lain. Data terbaru sudah dimuat, silakan ulangi perubahan Anda.", "text-red-600");
+        } else if(err.status === 403 || err.status === 404) {
+            setStatus("Gagal menyimpan: token tidak punya izin 'Contents: Read and write' untuk repo ini.", "text-red-600");
+        } else {
+            setStatus("Gagal menyimpan: " + err.message, "text-red-600");
+        }
+        return false;
+    } finally {
+        buttons.forEach(b => b.disabled = false);
+    }
 }
 
 function addOrUpdateDivision() {
@@ -149,11 +432,14 @@ function addOrUpdateDivision() {
     const codesRaw = codesInput.value;
     const codes = codesRaw.split(',').map(c => c.trim()).filter(c => c !== "");
     if(!name || codes.length === 0) return alert("Isi Nama Divisi dan Kode Dept!");
-    divisionMapping[name] = codes;
-    nameInput.value = "";
-    codesInput.value = "";
-    renderDivisionList();
-    if(rawData.length > 0) generate();
+    const bad = codes.filter(c => !/^\d+$/.test(c));
+    if(bad.length) return alert("Kode Dept harus angka: " + bad.join(', '));
+    const divisions = { ...divisionMapping, [name]: codes };
+    saveConfig({ ...config, divisions }).then(ok => {
+        if(!ok) return;
+        nameInput.value = "";
+        codesInput.value = "";
+    });
 }
 
 function editDiv(name) {
@@ -162,24 +448,33 @@ function editDiv(name) {
 }
 
 function deleteDiv(name) {
-    if(confirm(`Hapus divisi ${name}?`)) {
-        delete divisionMapping[name];
-        renderDivisionList();
-        if(rawData.length > 0) generate();
-    }
+    if(!confirm(`Hapus divisi ${name}?`)) return;
+    const divisions = { ...divisionMapping };
+    delete divisions[name];
+    saveConfig({ ...config, divisions });
 }
 
-function downloadSelf() {
-    const currentConfigStr = JSON.stringify(divisionMapping, null, 4);
-    let htmlContent = document.documentElement.outerHTML;
-    const regexConfig = /<script id="masterConfig" type="application\/json">[\s\S]*?<\/script>/;
-    const newConfigTag = `<script id="masterConfig" type="application/json">\n${currentConfigStr}\n<\/script>`;
-    htmlContent = htmlContent.replace(regexConfig, newConfigTag);
-    const blob = new Blob([`<!DOCTYPE html>\n${htmlContent}`], { type: 'text/html' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'Sales_Analyzer_PRO_Master.html';
-    a.click();
+function saveStores() {
+    const lines = document.getElementById('storeConfigInput').value.split('\n').map(l => l.trim()).filter(Boolean);
+    const stores = [];
+    for(const line of lines) {
+        const [colPart, ...nameParts] = line.split('=');
+        const col = colPart.trim().toUpperCase();
+        if(!/^[A-Z]{1,3}$/.test(col)) return alert(`Kolom tidak valid: "${line}"`);
+        if(stores.some(s => s.col === col)) return alert(`Kolom ${col} dobel.`);
+        stores.push({ col, name: nameParts.join('=').trim() });
+    }
+    if(!stores.length) return alert("Minimal harus ada 1 kolom store!");
+    saveConfig({ ...config, stores });
+}
+
+function storeCols() {
+    return config.stores.map(s => letterToIdx(s.col));
+}
+
+function storeLabel(k) {
+    const s = config.stores[k];
+    return s.name || headers[letterToIdx(s.col)] || s.col;
 }
 
 function changeZoom(amount) {
@@ -228,7 +523,7 @@ function handleFileUpload(e){
 function generate(){
     if(!rawData.length) return;
     const limit = parseInt(document.getElementById('rankLimit').value);
-    const amountIdx=['M','O','Q','S','U','W','Y','AA','AC','AE','AG','AI','AK'].map(letterToIdx);
+    const amountIdx=storeCols();
     let html="";
     
     Object.keys(divisionMapping).forEach(div=>{
@@ -269,7 +564,7 @@ function generate(){
         });
         
         html+=`<h2 class="font-bold text-lg text-slate-800 mt-6 mb-2 uppercase">DIVISION: ${div}</h2><table class="excel-table"><tr><th class="text-center">Rank</th><th>SKU</th><th>Item Description</th><th>Total All Store</th>`;
-        amountIdx.forEach(i=>html+=`<th>${headers[i]||i}</th>`);
+        amountIdx.forEach((i,k)=>html+=`<th>${storeLabel(k)}</th>`);
         html+="</tr>";
         
         topItems.forEach((it,idx)=>{
@@ -295,8 +590,7 @@ function exportExcel(){
 
     const limit = parseInt(document.getElementById('rankLimit').value);
 
-    const amountIdx = ['M','O','Q','S','U','W','Y','AA','AC','AE','AG','AI','AK']
-        .map(letterToIdx);
+    const amountIdx = storeCols();
 
     let wb = XLSX.utils.book_new();
 
@@ -325,8 +619,8 @@ function exportExcel(){
             "Total All Store"
         ];
 
-        amountIdx.forEach(i=>{
-            header.push(headers[i] || i);
+        amountIdx.forEach((i,k)=>{
+            header.push(storeLabel(k));
         });
 
         ws_data.push(header);
@@ -416,26 +710,8 @@ amountIdx.forEach(i=>{
 
     let ws = XLSX.utils.aoa_to_sheet(ws_data);
 
-    // AUTO WIDTH
-    ws['!cols'] = [
-        {wch:8},
-        {wch:15},
-        {wch:45},
-        {wch:18},
-        {wch:15},
-        {wch:15},
-        {wch:15},
-        {wch:15},
-        {wch:15},
-        {wch:15},
-        {wch:15},
-        {wch:15},
-        {wch:15},
-        {wch:15},
-        {wch:15},
-        {wch:15},
-        {wch:15}
-    ];
+    // AUTO WIDTH: Rank, SKU, Desc, Total, lalu 1 kolom per store
+    ws['!cols'] = [{wch:8},{wch:15},{wch:45},{wch:18}, ...amountIdx.map(()=>({wch:15}))];
 
     const range = XLSX.utils.decode_range(ws['!ref']);
 
@@ -619,6 +895,8 @@ if(C >= 3 && typeof cell.v === "number"){
 
     XLSX.writeFile(wb, "Top_Sales_Report.xlsx");
 }
+
+loadConfig();
 </script>
 </body>
 </html>
