@@ -44,3 +44,8 @@ Data sales: admin upload CSV → pratinjau → isi tanggal "Data sales s/d" → 
 Data tersimpan di tabel `tsg_uploads` (10 upload terakhir) dan langsung tampil untuk semua user,
 dengan keterangan tanggal di atas tabel. User biasa yang memilih CSV hanya melihatnya di perangkatnya sendiri.
 Jika tampilan belum berubah setelah upload file baru: purge cache Cloudflare.
+
+Pengembangan:
+- CSS Tailwind tidak lagi dari CDN. Setelah menambah class Tailwind baru di `hosting/index.html` / `hosting/js`, build ulang:
+  `npx tailwindcss@3.4.16 -c tailwind.config.js -i tailwind.input.css -o hosting/css/tailwind.css --minify`
+- Tes pembaca angka: `node --test tests/*.test.mjs`

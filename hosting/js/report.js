@@ -7,9 +7,15 @@ export function rankLimit() {
     return parseInt(document.getElementById('rankLimit').value);
 }
 
-// Agregasi per divisi: dipakai bersama oleh tampilan tabel dan export Excel.
-// Hasil: [{ div, topItems, storeRankings }] — storeRankings[kolom] = Map(sku -> rank di store itu).
-export function buildReport(limit) {
+// Agregasi per divisi: dipakai bersama oleh tampilan tabel, pencarian dan export Excel.
+// Hasil: [{ div, items, storeRankings }]
+//   items         = semua item divisi, urut Total All Store terbesar, masing-masing punya .rank
+//   storeRankings = storeRankings[kolom] = Map(sku -> rank di store itu)
+// Hasil di-cache selama data & konfigurasi tidak berubah (pencarian/ganti Top N tidak menghitung ulang).
+let cache = { rawData: null, config: null, result: null };
+
+export function buildReport() {
+    if (cache.rawData === state.rawData && cache.config === state.config) return cache.result;
     const amountIdx = storeCols();
     const divisions = state.config.divisions;
     const result = [];
@@ -40,7 +46,8 @@ export function buildReport(limit) {
         });
 
         const allItems = [...map.values()];
-        const topItems = [...allItems].sort((a, b) => b.totalAll - a.totalAll).slice(0, limit);
+        const items = [...allItems].sort((a, b) => b.totalAll - a.totalAll);
+        items.forEach((it, idx) => it.rank = idx + 1);
 
         const storeRankings = {};
         amountIdx.forEach(i => {
@@ -51,8 +58,9 @@ export function buildReport(limit) {
             );
         });
 
-        result.push({ div, topItems, storeRankings });
+        result.push({ div, items, storeRankings });
     });
+    cache = { rawData: state.rawData, config: state.config, result };
     return result;
 }
 
@@ -60,20 +68,54 @@ function rankClass(rank) {
     return rank === 1 ? 'rank-1' : rank === 2 ? 'rank-2' : rank === 3 ? 'rank-3' : '';
 }
 
-export function renderReport() {
-    if (!state.rawData.length) return;
-    const amountIdx = storeCols();
-    let html = '';
+const MAX_SEARCH_RESULTS = 50;
 
-    buildReport(rankLimit()).forEach(({ div, topItems, storeRankings }) => {
-        html += `<h2 class="font-bold text-lg text-slate-800 mt-6 mb-2 uppercase">${escapeHtml(div)}</h2>`;
-        html += `<div class="overflow-x-auto"><table class="excel-table"><tr><th class="text-center">Rank</th><th>SKU</th><th>Item Description</th><th>Total All Store</th>`;
+function matchesSearch(it, query) {
+    return it.displaySku.toLowerCase().includes(query)
+        || it.sku.includes(query.replace(/^0+/, '') || query)
+        || String(it.desc ?? '').toLowerCase().includes(query);
+}
+
+// Tombol pilihan divisi (Semua · GROCERY · DND · ...), hanya divisi yang punya data.
+function renderDivisionChips(report) {
+    const chips = document.getElementById('divChips');
+    if (state.filterDiv && !report.some(r => r.div === state.filterDiv)) state.filterDiv = '';
+    const names = ['', ...report.map(r => r.div)];
+    chips.innerHTML = names.map(div => {
+        const active = div === state.filterDiv;
+        const cls = active ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-700 border-gray-300 hover:bg-gray-100';
+        return `<button data-div="${escapeHtml(div)}" class="shrink-0 px-3 py-1 rounded-full border text-xs font-bold ${cls}">${escapeHtml(div || 'Semua')}</button>`;
+    }).join('');
+}
+
+export function renderReport() {
+    const filters = document.getElementById('reportFilters');
+    if (!state.rawData.length) {
+        filters.classList.add('hidden');
+        return;
+    }
+    const amountIdx = storeCols();
+    const report = buildReport();
+    const limit = rankLimit();
+    const query = state.search.trim().toLowerCase();
+    filters.classList.remove('hidden');
+    renderDivisionChips(report);
+
+    let html = '';
+    report.filter(r => !state.filterDiv || r.div === state.filterDiv).forEach(({ div, items, storeRankings }) => {
+        const shown = query ? items.filter(it => matchesSearch(it, query)) : items.slice(0, limit);
+        if (query && !shown.length) return;
+
+        html += `<h2 class="font-bold text-lg text-slate-800 mt-6 mb-2 uppercase">${escapeHtml(div)}`
+            + (query ? ` <span class="text-xs font-normal normal-case text-slate-500">${shown.length.toLocaleString('id-ID')} item cocok${shown.length > MAX_SEARCH_RESULTS ? `, ditampilkan ${MAX_SEARCH_RESULTS} teratas` : ''}</span>` : '')
+            + '</h2>';
+        html += `<div class="overflow-x-auto"><table class="excel-table"><tr><th class="c-rank text-center">Rank</th><th class="c-sku">SKU</th><th class="c-desc">Item Description</th><th>Total All Store</th>`;
         amountIdx.forEach((i, k) => html += `<th>${escapeHtml(storeLabel(k))}</th>`);
         html += '</tr>';
 
-        topItems.forEach((it, idx) => {
-            const rClass = rankClass(idx + 1);
-            html += `<tr><td class="${rClass} font-bold text-center">${idx + 1}</td><td>${escapeHtml(it.displaySku)}</td><td class="desc">${escapeHtml(it.desc)}</td><td class="num-cell ${rClass}">${it.totalAll.toLocaleString('id-ID')}</td>`;
+        (query ? shown.slice(0, MAX_SEARCH_RESULTS) : shown).forEach(it => {
+            const rClass = rankClass(it.rank);
+            html += `<tr><td class="c-rank ${rClass} font-bold text-center">${it.rank}</td><td class="c-sku">${escapeHtml(it.displaySku)}</td><td class="c-desc">${escapeHtml(it.desc)}</td><td class="num-cell ${rClass}">${it.totalAll.toLocaleString('id-ID')}</td>`;
             amountIdx.forEach(i => {
                 const val = it.stores[i];
                 const sClass = rankClass(storeRankings[i].get(it.sku) || 999);
@@ -83,5 +125,10 @@ export function renderReport() {
         });
         html += '</table></div>';
     });
+    if (!html) {
+        html = `<p class="mt-6 text-sm text-slate-500">${query
+            ? `Tidak ada item yang cocok dengan "<b>${escapeHtml(state.search.trim())}</b>".`
+            : 'Tidak ada data yang cocok dengan divisi yang terdaftar.'}</p>`;
+    }
     document.getElementById('report').innerHTML = html;
 }

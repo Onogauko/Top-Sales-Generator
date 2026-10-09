@@ -17,6 +17,7 @@ export function applyConfig(config, version) {
     $('configStatus').classList.add('hidden');
     if (state.admin) renderAdminPanel();
     renderReport();
+    renderDataInfo();
 }
 
 export async function loadConfig() {

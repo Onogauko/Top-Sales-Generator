@@ -18,14 +18,16 @@ export function exportExcel() {
     const wsData = [];
     const titleRows = new Set();
 
-    buildReport(rankLimit()).forEach(({ div, topItems, storeRankings }) => {
+    // Export selalu laporan lengkap (Top N semua divisi), tidak terpengaruh pencarian/filter di layar.
+    const limit = rankLimit();
+    buildReport().forEach(({ div, items, storeRankings }) => {
         titleRows.add(wsData.length);
         wsData.push([div]);
         wsData.push([]);
         wsData.push(['Rank', 'SKU', 'Item Description', 'Total All Store', ...amountIdx.map((i, k) => storeLabel(k))]);
 
-        topItems.forEach((it, idx) => {
-            const row = [idx + 1, "'" + it.displaySku, it.desc, it.totalAll];
+        items.slice(0, limit).forEach(it => {
+            const row = [it.rank, it.displaySku, it.desc, it.totalAll]; // SKU tetap teks (nol di depan aman)
             row._storeRanks = {};
             amountIdx.forEach(i => {
                 row.push(it.stores[i]);

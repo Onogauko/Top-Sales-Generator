@@ -11,4 +11,6 @@ export const state = {
     mustChange: false,    // admin masih memakai password awal
     csrf: '',
     zoom: 1.0,
+    search: '',           // kata kunci pencarian SKU / nama item
+    filterDiv: '',        // divisi yang dipilih ('' = semua)
 };

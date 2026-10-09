@@ -15,6 +15,18 @@ function setZoom(zoom) {
 
 $('csvFile').addEventListener('change', handleFileUpload);
 $('rankLimit').addEventListener('change', renderReport);
+
+let searchTimer;
+$('searchInput').addEventListener('input', e => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => { state.search = e.target.value; renderReport(); }, 200);
+});
+$('divChips').addEventListener('click', e => {
+    const chip = e.target.closest('button[data-div]');
+    if (!chip) return;
+    state.filterDiv = chip.dataset.div;
+    renderReport();
+});
 $('zoomInBtn').addEventListener('click', () => setZoom(state.zoom + 0.1));
 $('zoomOutBtn').addEventListener('click', () => setZoom(state.zoom - 0.1));
 $('zoomResetBtn').addEventListener('click', () => setZoom(1.0));
@@ -32,6 +44,23 @@ $('saveDivBtn').addEventListener('click', addOrUpdateDivision);
 $('saveStoresBtn').addEventListener('click', saveStores);
 $('saveUploadBtn').addEventListener('click', saveUpload);
 $('cancelUploadBtn').addEventListener('click', cancelPreview);
+
+// PWA: daftarkan service worker & tampilkan tombol "Pasang" jika browser mendukung.
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(err => console.warn('SW:', err));
+let installPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    installPrompt = e;
+    $('installBtn').classList.remove('hidden');
+});
+$('installBtn').addEventListener('click', async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    await installPrompt.userChoice;
+    installPrompt = null;
+    $('installBtn').classList.add('hidden');
+});
+window.addEventListener('appinstalled', () => $('installBtn').classList.add('hidden'));
 
 loadConfig();
 loadAuth().catch(err => console.error(err));

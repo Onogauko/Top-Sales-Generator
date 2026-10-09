@@ -1,9 +1,22 @@
 body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f1f5f9; transition: zoom 0.2s ease; }
-.excel-table { border-collapse: collapse; border: 2px solid black; font-size: 11px; background: white; width: 100%; }
-.excel-table th, .excel-table td { border: 1px solid #444; padding: 3px 6px; white-space: nowrap; }
-.excel-table td.desc { white-space: normal; min-width: 180px; }
-.rank-1 { background: #00b050; }
-.rank-2 { background: #ffff00; }
-.rank-3 { background: #f8cbad; }
+
+/* Tabel bergaya Excel. border-collapse: separate supaya garis tetap tampil pada kolom yang menempel (sticky). */
+.excel-table { border-collapse: separate; border-spacing: 0; border: 2px solid black; font-size: 11px; background: white; width: 100%; }
+.excel-table th, .excel-table td { border-right: 1px solid #444; border-bottom: 1px solid #444; padding: 3px 6px; white-space: nowrap; background: white; }
+.excel-table tr > :last-child { border-right: 0; }
+.excel-table tr:last-child > * { border-bottom: 0; }
+
+/* Rank, SKU, Item Description menempel di kiri saat tabel digeser ke samping. */
+:root { --w-rank: 36px; --w-sku: 66px; --w-desc: 120px; }
+@media (min-width: 768px) { :root { --w-rank: 44px; --w-sku: 84px; --w-desc: 260px; } }
+.excel-table .c-rank, .excel-table .c-sku, .excel-table .c-desc { position: sticky; z-index: 1; }
+.excel-table .c-rank { left: 0; width: var(--w-rank); min-width: var(--w-rank); max-width: var(--w-rank); }
+.excel-table .c-sku { left: var(--w-rank); width: var(--w-sku); min-width: var(--w-sku); max-width: var(--w-sku); overflow: hidden; text-overflow: ellipsis; }
+.excel-table .c-desc { left: calc(var(--w-rank) + var(--w-sku)); width: var(--w-desc); min-width: var(--w-desc); max-width: var(--w-desc); white-space: normal; box-shadow: 3px 0 4px -2px rgba(0, 0, 0, 0.35); }
+@media (max-width: 767px) { .excel-table td.c-desc { font-size: 10px; line-height: 1.2; } }
+
+.excel-table .rank-1 { background: #00b050; }
+.excel-table .rank-2 { background: #ffff00; }
+.excel-table .rank-3 { background: #f8cbad; }
 .num-cell { text-align: right; font-family: monospace; }
 .text-center { text-align: center; }

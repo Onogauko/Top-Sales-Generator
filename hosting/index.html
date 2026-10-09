@@ -5,10 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Top 10 Sales Generator - Jenta Zebua</title>
 
-<script src="https://cdn.tailwindcss.com/3.4.16"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+<link rel="stylesheet" href="css/tailwind.css">
 <link rel="stylesheet" href="css/style.css">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1e293b">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Top Sales">
 </head>
 
 <body class="p-3 md:p-6">
@@ -33,6 +40,7 @@
             <button id="zoomInBtn" title="Perbesar" class="px-2.5 py-1.5 text-sm font-bold hover:bg-gray-100">+</button>
         </div>
         <button id="exportBtn" class="bg-green-600 text-white px-3 py-1.5 rounded text-sm font-bold shadow hover:bg-green-700">⬇ Export Excel</button>
+        <button id="installBtn" class="hidden bg-blue-600 text-white px-3 py-1.5 rounded text-sm font-bold hover:bg-blue-700">📲 Pasang</button>
         <button id="settingsBtn" title="Pengaturan admin" class="relative bg-slate-800 text-white w-9 h-9 rounded text-lg leading-none hover:bg-slate-700">⚙️<span id="adminDot" class="hidden absolute -top-1 -right-1 w-3 h-3 rounded-full bg-green-400 border-2 border-white"></span></button>
     </div>
 </header>
@@ -109,6 +117,10 @@
 </div>
 
 <div id="dataInfo" class="mb-3 text-sm text-slate-500">⏳ Memuat data sales...</div>
+<div id="reportFilters" class="hidden mb-1 flex flex-col md:flex-row md:items-center gap-2">
+    <input type="search" id="searchInput" placeholder="🔍 Cari SKU / nama item..." class="w-full md:w-64 border border-gray-300 rounded px-3 py-1.5 text-sm">
+    <div id="divChips" class="flex gap-1 overflow-x-auto pb-1"></div>
+</div>
 <div id="report"></div>
 
 <script type="module" src="js/app.js"></script>
