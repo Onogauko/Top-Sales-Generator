@@ -13,7 +13,6 @@ $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
     || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
 session_name('tsg_session');
 session_set_cookie_params(['lifetime' => 0, 'path' => '/', 'secure' => $https, 'httponly' => true, 'samesite' => 'Lax']);
-session_start();
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
@@ -34,6 +33,7 @@ function db_error_hint(Throwable $e): ?string
         1049 => 'Database tidak ditemukan: cek nama database di config/db.php (pakai nama lengkap dengan awalan cPanel).',
         2002 => 'Tidak bisa terhubung ke server database: cek host di config/db.php (biasanya localhost).',
         2005 => 'Host database tidak dikenal: cek host di config/db.php (biasanya localhost).',
+        1153 => 'Data terlalu besar untuk database (max_allowed_packet MySQL). Hubungi hosting untuk menaikkan max_allowed_packet.',
         1146 => 'Tabel belum ada: jalankan database/schema.sql di phpMyAdmin, pada database yang sama dengan config/db.php.',
     ];
     return isset($hints[$code]) ? 'Database: ' . $hints[$code] : null;
@@ -45,10 +45,10 @@ function respond(array $data = []): void
     exit;
 }
 
-function fail(string $message, int $code = 400): void
+function fail(string $message, int $code = 400, array $extra = []): void
 {
     http_response_code($code);
-    echo json_encode(['ok' => false, 'error' => $message], JSON_UNESCAPED_UNICODE);
+    echo json_encode(['ok' => false, 'error' => $message] + $extra, JSON_UNESCAPED_UNICODE);
     exit;
 }
 
@@ -95,8 +95,16 @@ function set_setting(string $key, string $value): int
     return $now;
 }
 
+// Session hanya dimulai saat dibutuhkan (login/CSRF/cek admin). Request publik (config, data)
+// tidak membuat session, supaya request paralel saat halaman dibuka tidak saling menimpa cookie.
+function start_session(): void
+{
+    if (session_status() !== PHP_SESSION_ACTIVE) session_start();
+}
+
 function csrf_token(): string
 {
+    start_session();
     if (empty($_SESSION['csrf'])) $_SESSION['csrf'] = bin2hex(random_bytes(32));
     return $_SESSION['csrf'];
 }
@@ -105,12 +113,13 @@ function require_post_csrf(): void
 {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') fail('Method tidak diizinkan.', 405);
     if (!hash_equals(csrf_token(), $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '')) {
-        fail('Sesi kadaluarsa, silakan refresh halaman.', 403);
+        fail('Sesi kadaluarsa, silakan refresh halaman.', 403, ['csrfExpired' => true]);
     }
 }
 
 function is_admin(): bool
 {
+    start_session();
     if (empty($_SESSION['admin'])) return false;
     if (time() - ($_SESSION['last_activity'] ?? 0) > ADMIN_IDLE_SECONDS) {
         unset($_SESSION['admin']);

@@ -1,7 +1,7 @@
 import { state } from './core/state.js';
 import { cleanNum, escapeHtml, storeCols, storeLabel } from './utils.js';
 
-const COL_DEPT = 3, COL_SKU = 5, COL_DESC = 6;
+export const COL_DEPT = 3, COL_SKU = 5, COL_DESC = 6;
 
 export function rankLimit() {
     return parseInt(document.getElementById('rankLimit').value);

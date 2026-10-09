@@ -5,8 +5,8 @@
 //                 Header: X-Filename (URL-encoded), X-Sales-Until (YYYY-MM-DD), X-Row-Count
 require __DIR__ . '/../includes/bootstrap.php';
 
-const MAX_GZIP_BYTES = 10 * 1024 * 1024;
-const MAX_CSV_BYTES = 100 * 1024 * 1024;
+const MAX_GZIP_BYTES = 30 * 1024 * 1024;
+const MAX_CSV_BYTES = 300 * 1024 * 1024;
 const KEEP_UPLOADS = 10; // upload lama selain 10 terakhir dihapus otomatis
 
 function upload_meta(array $row): array
@@ -40,6 +40,9 @@ require_post_csrf();
 require_admin();
 
 $gz = file_get_contents('php://input');
+if (($gz === false || $gz === '') && (int)($_SERVER['CONTENT_LENGTH'] ?? 0) > 0) {
+    fail('File melebihi batas upload server (post_max_size = ' . ini_get('post_max_size') . '). Naikkan di cPanel > Select PHP Version > Options.', 413);
+}
 if ($gz === false || $gz === '') fail('File kosong.');
 if (strlen($gz) > MAX_GZIP_BYTES) fail('File terlalu besar.', 413);
 $csv = @gzdecode($gz, MAX_CSV_BYTES);
