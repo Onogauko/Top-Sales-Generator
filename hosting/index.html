@@ -13,21 +13,54 @@
 
 <body class="p-3 md:p-6">
 
-<div class="mb-6 border-b-2 border-gray-300 pb-2 flex flex-wrap gap-3 justify-between items-center">
+<header class="mb-4 border-b-2 border-gray-300 pb-2 flex flex-wrap gap-x-4 gap-y-2 justify-between items-center">
     <div>
-        <h1 class="text-2xl font-black text-slate-800 tracking-tight">TOP SALES GENERATOR</h1>
-        <p class="text-xs text-slate-500 uppercase font-bold tracking-widest">Retail Data Analysis System</p>
+        <h1 class="text-xl md:text-2xl font-black text-slate-800 tracking-tight leading-tight">TOP SALES GENERATOR</h1>
+        <p class="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Retail Data Analysis System</p>
     </div>
-    <div id="adminLoginArea" class="flex gap-2">
-        <input type="password" id="adminPass" placeholder="Password Admin" autocomplete="current-password" class="border p-2 text-sm rounded w-40">
-        <button id="loginBtn" class="bg-slate-800 text-white px-3 py-2 rounded text-sm font-bold disabled:opacity-50">Login Admin</button>
+    <div class="flex flex-wrap items-center gap-2">
+        <label for="csvFile" class="cursor-pointer bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-1.5 rounded text-sm font-semibold">📂 Upload CSV</label>
+        <input type="file" id="csvFile" accept=".csv,text/csv" class="hidden">
+        <select id="rankLimit" title="Jumlah rank yang ditampilkan" class="border border-gray-300 rounded px-2 py-1.5 text-sm bg-white">
+            <option value="10">Top 10</option>
+            <option value="15">Top 15</option>
+            <option value="20">Top 20</option>
+            <option value="50">Top 50</option>
+        </select>
+        <div class="flex items-center border border-gray-300 rounded bg-white overflow-hidden">
+            <button id="zoomOutBtn" title="Perkecil" class="px-2.5 py-1.5 text-sm font-bold hover:bg-gray-100">−</button>
+            <button id="zoomResetBtn" title="Reset zoom" class="w-12 py-1.5 text-xs font-mono hover:bg-gray-100"><span id="zoomLabel">100%</span></button>
+            <button id="zoomInBtn" title="Perbesar" class="px-2.5 py-1.5 text-sm font-bold hover:bg-gray-100">+</button>
+        </div>
+        <button id="exportBtn" class="bg-green-600 text-white px-3 py-1.5 rounded text-sm font-bold shadow hover:bg-green-700">⬇ Export Excel</button>
+        <button id="settingsBtn" title="Pengaturan admin" class="relative bg-slate-800 text-white w-9 h-9 rounded text-lg leading-none hover:bg-slate-700">⚙️<span id="adminDot" class="hidden absolute -top-1 -right-1 w-3 h-3 rounded-full bg-green-400 border-2 border-white"></span></button>
     </div>
-    <button id="logoutBtn" class="hidden bg-red-600 text-white px-3 py-2 rounded text-sm font-bold">Logout Admin</button>
+</header>
+
+<p id="configStatus" class="hidden mb-3 text-xs font-bold text-red-600"></p>
+
+<!-- LOGIN ADMIN (popup dari tombol ⚙️) -->
+<div id="loginModal" class="hidden fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+    <form id="loginForm" class="bg-white rounded-lg shadow-xl p-5 w-full max-w-xs">
+        <h2 class="font-bold text-lg mb-3">⚙️ Pengaturan Admin</h2>
+        <input type="password" id="adminPass" placeholder="Password admin" autocomplete="current-password" class="w-full border p-2 text-sm rounded mb-2">
+        <p id="loginError" class="hidden text-xs font-bold text-red-600 mb-2"></p>
+        <div class="flex gap-2 justify-end">
+            <button type="button" id="loginCancelBtn" class="px-3 py-2 rounded text-sm bg-gray-200 hover:bg-gray-300">Batal</button>
+            <button type="submit" id="loginBtn" class="px-4 py-2 rounded text-sm font-bold bg-slate-800 text-white hover:bg-slate-700 disabled:opacity-50">Masuk</button>
+        </div>
+    </form>
 </div>
 
 <!-- PANEL PENGATURAN ADMIN -->
 <div id="adminPanel" class="hidden mb-6 bg-white p-4 md:p-6 rounded-lg shadow-md border-t-4 border-blue-600">
-    <h2 class="font-bold text-lg mb-4">⚙️ Control Panel - Management Divisi</h2>
+    <div class="flex flex-wrap gap-2 justify-between items-center mb-4">
+        <h2 class="font-bold text-lg">⚙️ Control Panel - Management Divisi</h2>
+        <div class="flex gap-2">
+            <button id="closePanelBtn" class="px-3 py-1.5 rounded text-sm bg-gray-200 hover:bg-gray-300">Tutup</button>
+            <button id="logoutBtn" class="px-3 py-1.5 rounded text-sm font-bold bg-red-600 text-white hover:bg-red-700">Logout</button>
+        </div>
+    </div>
 
     <p id="mustChangeNotice" class="hidden mb-4 p-3 bg-amber-50 border border-amber-300 rounded text-sm font-bold text-amber-800">
         Anda masih memakai password awal. Ganti password admin dulu sebelum mengubah divisi / store.
@@ -67,36 +100,6 @@
     <p id="saveStatus" class="mt-3 text-xs font-bold"></p>
 </div>
 
-<p id="configStatus" class="mb-4 text-xs text-slate-500">Memuat konfigurasi...</p>
-
-<div class="flex flex-wrap gap-4 items-end mb-4">
-    <div>
-        <label class="block text-sm font-bold mb-1 text-slate-700">Upload File CSV:</label>
-        <input type="file" id="csvFile" accept=".csv,text/csv" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-    </div>
-
-    <div>
-        <label class="block text-sm font-bold mb-1 text-slate-700">Tampilkan Rank:</label>
-        <select id="rankLimit" class="border border-gray-300 rounded px-3 py-2 text-sm">
-            <option value="10">Top 10 SKU</option>
-            <option value="15">Top 15 SKU</option>
-            <option value="20">Top 20 SKU</option>
-            <option value="50">Top 50 SKU</option>
-        </select>
-    </div>
-
-    <div class="flex gap-2">
-        <button id="zoomInBtn" class="bg-gray-700 text-white px-3 py-2 rounded font-bold text-sm">Zoom In (+)</button>
-        <button id="zoomOutBtn" class="bg-gray-700 text-white px-3 py-2 rounded font-bold text-sm">Zoom Out (-)</button>
-        <button id="zoomResetBtn" class="bg-gray-400 text-white px-4 py-2 rounded text-sm">Reset</button>
-        <span id="zoomLabel" class="self-center font-mono text-sm ml-2">100%</span>
-    </div>
-
-    <button id="exportBtn" class="bg-green-600 text-white px-6 py-2 rounded font-bold md:ml-auto shadow-md hover:bg-green-700">
-        Export Excel (1 Sheet)
-    </button>
-</div>
-
 <div id="uploadBar" class="hidden mb-4 p-3 bg-amber-50 border border-amber-300 rounded flex flex-wrap gap-2 items-center">
     <label class="text-sm font-bold text-amber-900">Data sales s/d
         <input type="date" id="salesUntil" class="ml-1 border rounded p-1 text-sm font-normal">
@@ -105,7 +108,6 @@
     <button id="cancelUploadBtn" class="bg-gray-400 text-white px-4 py-2 rounded text-sm">Batal</button>
 </div>
 
-<hr class="mb-4">
 <div id="dataInfo" class="mb-3 text-sm text-slate-500">⏳ Memuat data sales...</div>
 <div id="report"></div>
 

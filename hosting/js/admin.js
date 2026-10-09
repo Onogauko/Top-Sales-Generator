@@ -14,8 +14,7 @@ function setStatus(text, color = 'text-slate-500') {
 export function applyConfig(config, version) {
     state.config = config;
     state.configVersion = version;
-    $('configStatus').textContent =
-        `Konfigurasi: ${Object.keys(config.divisions).length} divisi, ${config.stores.length} store.`;
+    $('configStatus').classList.add('hidden');
     if (state.admin) renderAdminPanel();
     renderReport();
 }
@@ -26,7 +25,7 @@ export async function loadConfig() {
         applyConfig(data.config, data.version);
     } catch (err) {
         $('configStatus').textContent = "Gagal memuat konfigurasi: " + err.message;
-        $('configStatus').className = "mb-4 text-xs font-bold text-red-600";
+        $('configStatus').classList.remove('hidden');
     }
 }
 
@@ -34,9 +33,9 @@ function applyAuth(data) {
     if (data.csrf) state.csrf = data.csrf;
     state.admin = !!data.admin;
     state.mustChange = !!data.mustChange;
-    $('adminPanel').classList.toggle('hidden', !state.admin);
-    $('adminLoginArea').classList.toggle('hidden', state.admin);
-    $('logoutBtn').classList.toggle('hidden', !state.admin);
+    $('adminDot').classList.toggle('hidden', !state.admin);
+    if (!state.admin) showPanel(false);
+    else if (state.mustChange) showPanel(true); // password awal: panel langsung dibuka untuk ganti password
     $('mustChangeNotice').classList.toggle('hidden', !state.mustChange);
     $('adminTools').classList.toggle('hidden', state.mustChange);
     if (state.admin) renderAdminPanel();
@@ -47,16 +46,45 @@ export async function loadAuth() {
     applyAuth(await api('api/auth.php'));
 }
 
-export async function login() {
+function showPanel(open) {
+    $('adminPanel').classList.toggle('hidden', !open);
+}
+
+function showLoginError(message) {
+    $('loginError').textContent = message;
+    $('loginError').classList.toggle('hidden', !message);
+}
+
+export function closeLoginModal() {
+    $('loginModal').classList.add('hidden');
+    $('adminPass').value = "";
+    showLoginError('');
+}
+
+export function closePanel() {
+    showPanel(false);
+}
+
+// Tombol ⚙️: admin yang sudah login langsung buka/tutup panel; selain itu minta password.
+export function openSettings() {
+    if (state.admin) return showPanel($('adminPanel').classList.contains('hidden'));
+    $('loginModal').classList.remove('hidden');
+    $('adminPass').focus();
+}
+
+export async function login(e) {
+    e?.preventDefault();
     const password = $('adminPass').value;
-    if (!password) return alert("Masukkan password admin!");
+    if (!password) return showLoginError("Masukkan password admin.");
     $('loginBtn').disabled = true;
     try {
         applyAuth(await api('api/auth.php?action=login', { method: 'POST', body: { password } }));
-        $('adminPass').value = "";
+        closeLoginModal();
+        showPanel(true);
         setStatus('');
     } catch (err) {
-        alert(err.message);
+        showLoginError(err.message);
+        $('adminPass').select();
     } finally {
         $('loginBtn').disabled = false;
     }

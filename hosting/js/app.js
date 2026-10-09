@@ -2,7 +2,7 @@
 import { state } from './core/state.js';
 import { renderReport } from './report.js';
 import { exportExcel } from './export.js';
-import { loadConfig, loadAuth, login, logout, changePassword, addOrUpdateDivision, saveStores } from './admin.js';
+import { loadConfig, loadAuth, login, logout, openSettings, closeLoginModal, closePanel, changePassword, addOrUpdateDivision, saveStores } from './admin.js';
 import { loadSavedData, handleFileUpload, saveUpload, cancelPreview } from './data.js';
 
 const $ = id => document.getElementById(id);
@@ -20,8 +20,12 @@ $('zoomOutBtn').addEventListener('click', () => setZoom(state.zoom - 0.1));
 $('zoomResetBtn').addEventListener('click', () => setZoom(1.0));
 $('exportBtn').addEventListener('click', exportExcel);
 
-$('loginBtn').addEventListener('click', login);
-$('adminPass').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+$('settingsBtn').addEventListener('click', openSettings);
+$('loginForm').addEventListener('submit', login);
+$('loginCancelBtn').addEventListener('click', closeLoginModal);
+$('loginModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeLoginModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLoginModal(); });
+$('closePanelBtn').addEventListener('click', closePanel);
 $('logoutBtn').addEventListener('click', logout);
 $('changePassBtn').addEventListener('click', changePassword);
 $('saveDivBtn').addEventListener('click', addOrUpdateDivision);
